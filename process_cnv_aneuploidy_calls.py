@@ -3,7 +3,6 @@ import os
 import pandas as pd
 import argparse
 import numpy as np
-import shutil
 
 
 def read_smap(file_path):
@@ -149,7 +148,7 @@ def collapse_rows(df, cnv_stitch_window):
     collapsed_df = pd.DataFrame(collapsed_data)
     return collapsed_df
 
-def pairwise_comparison(case, control, cnv_overlap_percentage, cnv_window):
+def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Performs pairwise comparison between case and control DataFrames
     Args:
         case (pd.DataFrame): DataFrame representing the case data
@@ -161,16 +160,26 @@ def pairwise_comparison(case, control, cnv_overlap_percentage, cnv_window):
     """
     case['Width'] = case['Width'].astype(float)
     control['Width'] = control['Width'].astype(float)
+    grouped_case = case.groupby('chr')
+    grouped_control = control.groupby('chr')
     filtered_rows = []
-    for _, case_row in case.iterrows():
-        for _, control_row in control.iterrows():
-            start_diff = abs(case_row['Start'] - control_row['Start'])
-            end_diff = abs(case_row['End'] - control_row['End'])
-            width_ratio = case_row['Width'] / control_row['Width']
-            if start_diff <= cnv_window and end_diff <= cnv_window and width_ratio <= cnv_overlap_percentage:
-                filtered_rows.append(case_row)
-                break  # Move to the next case row
-    filtered_case = pd.DataFrame(filtered_rows, columns=case.columns)
+    for chr_name, case_group in grouped_case:
+        if chr_name in grouped_control.groups:
+            control_group = grouped_control.get_group(chr_name)
+            for _, case_row in case_group.iterrows():
+                for _, control_row in control_group.iterrows():
+                    start_diff = abs(case_row['Start'] - control_row['Start'])
+                    end_diff = abs(case_row['End'] - control_row['End'])
+                    width_ratio = case_row['Width'] / control_row['Width']
+                    if start_diff <= cnv_window and end_diff <= cnv_window and width_ratio <= cnv_overlap_percentage:
+                        filtered_rows.append(case_row)
+                        break  # Move to the next case row
+        else:
+            [filtered_rows.append(x[1].to_frame().T) for x in case_group.iterrows()]
+    if len(filtered_rows) == 0:
+        filtered_case = pd.DataFrame(filtered_rows,columns=case.columns)
+    else:
+        filtered_case = pd.concat(filtered_rows)
     return filtered_case
 
 def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
@@ -188,17 +197,21 @@ def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
     control['fractChrLen'] = control['fractChrLen'].astype(float)
     case['fractCN'] = case['fractCN'].astype(float)
     control['fractCN'] = control['fractCN'].astype(float)
-    merged = case.merge(control, on=['chr', 'types'], suffixes=('_case', '_control'))
+    merged = case.merge(control, on=['chr', 'types'], suffixes=('_case', '_control'), how='outer')
     filtered_rows = []
     for _, row in merged.iterrows():
-        fractChrLen_diff = abs(row['fractChrLen_case'] - row['fractChrLen_control'])
-        fractCN_diff = abs(row['fractCN_case'] - row['fractCN_control'])
-        if fractChrLen_diff > aneuploidy_overlap_percentage and fractCN_diff > aneuploidy_overlap_percentage:
+        if pd.isnull(row['fractChrLen_control']) or pd.isnull(row['fractCN_control']):
             filtered_rows.append(row)
-    filtered_case = pd.DataFrame(filtered_rows, columns=case.columns)
+        else:
+            fractChrLen_diff = abs(row['fractChrLen_case'] - row['fractChrLen_control'])
+            fractCN_diff = abs(row['fractCN_case'] - row['fractCN_control'])
+            if fractChrLen_diff > aneuploidy_overlap_percentage and fractCN_diff > aneuploidy_overlap_percentage:
+                filtered_rows.append(row)
+    filtered_case = pd.DataFrame(filtered_rows,columns=merged.columns).iloc[:,:5]
+    filtered_case.columns = case.columns
     return filtered_case
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, donor_id, case_id, celltype, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -208,10 +221,14 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         control_aneuploidy (str): relative path to aneuploidy file from control zip
         control_cnv (str): relative path to CNV file from control zip
         out_file (str): outfile handle
+        donor_id (str): donor id
+        case_id (str): case id
+        celltype (str): cell type
         cnv_overlap_percentage (float): maximum reciprocal overlap percentage to consider CNV unique to case
         aneuploidy_overlap_percentag (float): maximum fractional coverage difference to consider Aneuploidies unique to case
+        cnv_window (int): base pair window to extend start and stop positions by for CNV calls
+        cnv_stitch_window (int): base pair window used to extend and join neighboring cnvs that fall within n-basepairs from one another. Defaults to 550000.
     """
-
     dual_smap_frame = read_smap(dual_smap)
     dual_aneuploidy_frame = read_aneuploidy(dual_aneuploidy)
     dual_cnv_frame = read_cnv(dual_cnv)
@@ -223,21 +240,47 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
 
     cnv_reindex_cols = ['Cell type', 'Donor ID', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Confidence']
     unique_case_cnvs = pairwise_comparison(case=stitched_dual_cnvs,control=stitched_control_cnvs, cnv_overlap_percentage=cnv_overlap_percentage, cnv_window=cnv_window)
-    unique_case_cnvs_subset = unique_case_cnvs.reindex(cnv_reindex_cols, axis=1).rename(columns={'Type':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','RefEndPos':'Stop', 'Width':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF'})
+    unique_case_cnvs_subset = unique_case_cnvs.reindex(cnv_reindex_cols, axis=1).rename(columns={'Type':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','End':'Stop', 'Width':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF'})
     unique_case_cnvs_subset['CallType'] = ' CNV'
 
     aneu_reindex_cols = ['Cell type', 'Donor ID', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractCN','score']
     unique_case_aneuploidies = compare_aneuploidy_data(case=dual_aneuploidy_frame, control=control_aneuploidy_frame, aneuploidy_overlap_percentage=aneuploidy_overlap_percentage)
-    unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','RefEndPos':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber'})
+    unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber','score':'Confidence'})
+    unique_case_aneu_subset['Algorithm'] = 'Region-based'
     unique_case_aneu_subset['CallType'] = 'Aneuploidy'
 
     smap_reindex_cols = ['Cell type', 'Donor ID', 'SVType', 'SmapEntryID', 'Unique to case', 'RefcontigID1', 'RefcontigID2', 'RefStartPos', 'RefEndPos', 'SVsize', 'VAF', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber', 'Confidence']
-    smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Donor ID', 'SVType':'Event Type', 'RefcontigID1':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count'})
+    smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Id', 'SVType':'Event Type', 'RefcontigID1':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count'})
     smap_subset['CallType'] = 'SV'
 
-    out_table = pd.concat([smap_subset, unique_case_aneu_subset, unique_case_cnvs_subset],axis=1)
+    out_table = pd.concat([smap_subset, unique_case_aneu_subset, unique_case_cnvs_subset],ignore_index=True)
+    out_table['Donor ID'] = donor_id
+    out_table['Case ID'] = case_id
+    out_table['Cell type'] = celltype
+
+    dual_aneuploidy_frame['Condition'] = 'Case'
+    control_aneuploidy_frame['Condition'] = 'Control'
+    aneu_reindex_cols = ['Cell type', 'Donor ID', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractCN','score','Condition']
+    all_aneu_calls = pd.concat([dual_aneuploidy_frame, control_aneuploidy_frame]).reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber','score':'Confidence'})
+    all_aneu_calls['Algorithm'] = 'Region-based'
+    all_aneu_calls['CallType'] = 'Aneuploidy'
+
+    stitched_dual_cnvs['Condition'] = 'Case'
+    stitched_control_cnvs['Condition'] = 'Control'
+    cnv_reindex_cols_all = ['Cell type', 'Donor ID', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Confidence','Condition']
+    all_cnv_calls = pd.concat([stitched_dual_cnvs, stitched_control_cnvs]).reindex(cnv_reindex_cols_all, axis=1).rename(columns={'Type':'Event Type', 'chr':'Chr1 location', 'RefcontigID2':'Chr2 location','RefStartPos':'Start','End':'Stop', 'Width':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF'})
+    all_cnv_calls['CallType'] = ' CNV'
+
+    all_calls = pd.concat([smap_subset, all_aneu_calls, all_cnv_calls],ignore_index=True)
+    all_calls['Donor ID'] = donor_id
+    all_calls['Case ID'] = case_id
+    all_calls['Cell type'] = celltype
+    all_calls.head()
+    print(celltype)
+
     with pd.ExcelWriter(out_file) as writer:
-            out_table.to_excel(writer, sheet_name='DualAnnotationResults',index=False)
+            all_calls.to_excel(writer, sheet_name='DualAnnotationResults',index=False)
+            out_table.to_excel(writer, sheet_name='Case_Unique_Results',index=False)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -248,6 +291,9 @@ def main():
     parser.add_argument('--control_aneuploidy', type=str, help="relative path to control *_Aneuploidy.txt")
     parser.add_argument('--control_cnv', type=str, help="relative path to control *_CNV.txt")
     parser.add_argument('--out_file', type=str, help="output file handle")
+    parser.add_argument('--donor_id', type=str, help="Donor ID")
+    parser.add_argument('--case_id', type=str, help="Case ID")
+    parser.add_argument('--celltype', type=str, help="cell type")
     parser.add_argument('--cnv_overlap_percentage', type=float, nargs='?', const=1, default=0.3, help="maximum reciprocal overlap ratio allowed for CNV calls to be considered unique")
     parser.add_argument('--aneuploidy_overlap_percentage', type=float, nargs='?', const=1, default=0.5,  help="maximum fractional difference allowed for Aneuploidy calls to be considered unique")
     parser.add_argument('--cnv_window', type=int, nargs='?', const=1, default=1000, help="bp window buffer at start and end of CNV calls")
@@ -257,6 +303,7 @@ def main():
 
     # parse command line arguments
     args = parser.parse_args()
+    print(args)
     dual_aneuploidy = args.dual_aneuploidy
     dual_smap = args.dual_smap
     dual_cnv = args.dual_cnv
@@ -266,9 +313,12 @@ def main():
     aneuploidy_overlap_percentage = args.aneuploidy_overlap_percentage
     cnv_overlap_percentage = args.cnv_overlap_percentage
     out_file = args.out_file
+    donor_id = args.donor_id
+    case_id = args.case_id
+    celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, donor_id, case_id, celltype, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
