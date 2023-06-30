@@ -20,5 +20,5 @@ Download the filtered CNV and Aneuploidy calls for the control/mock sample from 
 
 Mock example where both the Mock and Dual annotation results were unzipped in the directory `dual_reporting`
 ```
-python process_cnv_aneuploidy_calls.py --dual_aneuploidy dual_reporting/HsMM-059-D2/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22_Aneuploidy.txt --dual_smap dual_reporting/HsMM-059-D2/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22_Annotated_SV.smap --dual_cnv dual_reporting/HsMM-059-D2/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22/HsMM-059-D2-RNP-versus-Mock_6_22_2023_21_23_22_CNV.txt --control_aneuploidy dual_reporting/HsMM-059-D2/HsMM-059-Mock_RVP_6_22_2023_21_26_4/HsMM-059-Mock_RVP_6_22_2023_21_26_4_Aneuploidy.txt --control_cnv dual_reporting/HsMM-059-D2/HsMM-059-Mock_RVP_6_22_2023_21_26_4/HsMM-059-Mock_RVP_6_22_2023_21_26_4_CNV.txt --out_file test_HsMM_059.xlsx
+python process_cnv_aneuploidy_calls.py --dual_aneuploidy dual_reporting/Dual_Aneuploidy.txt --dual_smap dual_reporting/Dual_Annotated_SV.smap --dual_cnv dual_reporting/Dual_CNV.txt --control_aneuploidy dual_reporting/Control_Aneuploidy.txt --control_cnv dual_reporting/Control_CNV.txt --out_file Dual_integrated_results.xlsx
 ```
