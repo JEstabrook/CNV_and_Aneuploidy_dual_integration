@@ -387,12 +387,10 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     smap_filtered, smap_subset = process_smap(dual_smap_frame)
 
     out_table = pd.concat([smap_filtered, unique_case_aneu_subset, unique_case_cnvs_subset],ignore_index=True)
-    out_table['Donor ID'] = donor_id
     out_table['Case ID'] = case_id
     out_table['Cell type'] = celltype
 
     all_calls = process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed)
-    all_calls['Donor ID'] = donor_id
     all_calls['Case ID'] = case_id
     all_calls['Cell type'] = celltype
 
@@ -409,7 +407,6 @@ def main():
     parser.add_argument('--control_aneuploidy', type=str, help="relative path to control *_Aneuploidy.txt")
     parser.add_argument('--control_cnv', type=str, help="relative path to control *_CNV.txt")
     parser.add_argument('--out_file', type=str, help="output file handle")
-    parser.add_argument('--donor_id', type=str, help="Donor ID")
     parser.add_argument('--case_id', type=str, help="Case ID")
     parser.add_argument('--celltype', type=str, help="cell type")
     parser.add_argument('--cnv_overlap_percentage', type=float, nargs='?', const=1, default=0.3, help="maximum reciprocal overlap ratio allowed for CNV calls to be considered unique")
