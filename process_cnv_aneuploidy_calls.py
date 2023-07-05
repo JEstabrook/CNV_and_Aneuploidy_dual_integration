@@ -231,7 +231,7 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
         case_overlap_frame = pd.concat(case_overlap)
         case_overlap_frame['Width_Control'] = case_overlap_frame['End_Control'] - case_overlap_frame['Start_Control']
     else:
-        case_overlap_frame = pd.DataFrame(columns=['Id_Case', 'chr_Case', 'Start_Case', 'End_Case', 'Width_Case', 'Type_Case', 'fractionalCopyNumber_Case', 'CopyNumber_Case', 'Confidence_Case', 'AlleleFreq_Case', 'Mask_overlap_fract_Case', 'Algorithm_Case', 'diff_Case', 'unique_id_Case', 'Id_Control', 'chr_Control', 'Start_Control', 'End_Control', 'Width_Control', 'Type_Control', 'fractionalCopyNumber_Control', 'CopyNumber_Control', 'Confidence_Control', 'AlleleFreq_Control', 'Mask_overlap_fract_Control', 'Algorithm_Control', 'diff_Control', 'unique_id_Control'])
+        case_overlap_frame = pd.DataFrame(columns=['Id_Case', 'chr_Case', 'Start_Case', 'End_Case', 'Width_Case', 'Type_Case', 'fractionalCopyNumber_Case', 'CopyNumber_Case', 'AlleleFreq_Case', 'Mask_overlap_fract_Case', 'Algorithm_Case', 'diff_Case', 'unique_id_Case', 'Id_Control', 'chr_Control', 'Start_Control', 'End_Control', 'Width_Control', 'Type_Control', 'fractionalCopyNumber_Control', 'CopyNumber_Control', 'AlleleFreq_Control', 'Mask_overlap_fract_Control', 'Algorithm_Control', 'diff_Control', 'unique_id_Control'])
     return filtered_case, case_overlap_frame
 
 def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
@@ -277,10 +277,10 @@ def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     Returns:
         pd.DataFrame: Filtered case DataFrame
     """
-    cnv_reindex_cols = ['Cell type', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Confidence']
+    cnv_reindex_cols = ['Cell type', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber']
     unique_case_cnvs, cnv_comp_table = pairwise_comparison(case=case,control=control, cnv_overlap_percentage=cnv_overlap_percentage, cnv_window=cnv_window)
-    cnv_reindex_comp_cols = ['Cell type', 'Type_Case', 'Id_Case', 'Unique to case', 'chr_Case', 'RefcontigID2', 'Start_Case', 'End_Case', 'Width_Case', 'AlleleFreq_Case', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Start_Control', 'End_Control', 'Width_Control', 'AlleleFreq_Control','Confidence_Case','Confidence_Control']
-    cnv_comp_table_indexed = cnv_comp_table.reindex(cnv_reindex_comp_cols, axis=1).rename(columns={'Type_Case':'Event Type', 'Id_Case':'Id','chr_Case':'ChrA location', 'RefcontigID2':'ChrB location','Start_Case':'Start','End_Case':'Stop', 'Width_Case':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq_Case':'VAF','AlleleFreq_Control':'VAF Control','Width_Control':'SV size Control','Confidence_Case':'Confidence','End_Control':'Stop_Control'})
+    cnv_reindex_comp_cols = ['Cell type', 'Type_Case', 'Id_Case', 'Unique to case', 'chr_Case', 'RefcontigID2', 'Start_Case', 'End_Case', 'Width_Case', 'AlleleFreq_Case', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Start_Control', 'End_Control', 'Width_Control', 'AlleleFreq_Control']
+    cnv_comp_table_indexed = cnv_comp_table.reindex(cnv_reindex_comp_cols, axis=1).rename(columns={'Type_Case':'Event Type', 'Id_Case':'Id','chr_Case':'ChrA location', 'RefcontigID2':'ChrB location','Start_Case':'Start','End_Case':'Stop', 'Width_Case':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq_Case':'VAF','AlleleFreq_Control':'VAF Control','Width_Control':'SV size Control','End_Control':'Stop_Control'})
     cnv_comp_table_indexed['CallType'] = ' CNV'
     cnv_comp_table_indexed['Algorithm'] = 'Region-based'
     cnv_comp_table_indexed['SV size control'] = cnv_comp_table_indexed['Stop_Control'] - cnv_comp_table_indexed['Start_Control']
@@ -305,17 +305,17 @@ def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
     if (case.shape[0] != 0) & (control.shape[0] !=0):
         unique_case_aneuploidies, aneu_comp_table = compare_aneuploidy_data(case=case, control=control, aneuploidy_overlap_percentage=aneuploidy_overlap_percentage)
         aneu_reindex_comp_cols = ['Cell type', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen_case', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'Algorithm', 'fractCN_case', 'fractChrLen_control', 'fractCN_control', 'score_control','score_case']
-        aneu_comp_table_indexed = aneu_comp_table.reindex(aneu_reindex_comp_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop','Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN_case':'fractionalCopyNumber','fractCN_control':'fractionalCopyNumber_control','score_case':'Confidence', 'score_control':'Confidence_Control'})
+        aneu_comp_table_indexed = aneu_comp_table.reindex(aneu_reindex_comp_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop','Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN_case':'fractionalCopyNumber','fractCN_control':'fractionalCopyNumber_control'})
         aneu_comp_table_indexed['CallType'] = 'Aneuploidy'
         aneu_comp_table_indexed['Algorithm'] = 'Region-based'
         aneu_comp_table_indexed['fractChrLen_case'] = aneu_comp_table_indexed.apply(lambda row: row['fractChrLen_case'] * contig_length[int(row['ChrA location'])], axis=1)
         aneu_comp_table_indexed['fractChrLen_control'] = aneu_comp_table_indexed.apply(lambda row: row['fractChrLen_control'] * contig_length[int(row['ChrA location'])], axis=1)
         aneu_comp_table_indexed = aneu_comp_table_indexed.rename(columns={'fractChrLen_case':'SV size','fractChrLen_control':'SV size Control'})
-        unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber','score':'Confidence'})
+        unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber'})
         unique_case_aneu_subset['Algorithm'] = 'Region-based'
         unique_case_aneu_subset['CallType'] = 'Aneuploidy'
     else:
-        empty_cols = ['Cell type', 'Event Type', 'Id', 'Unique to case', 'ChrA location', 'ChrB location', 'Start', 'Stop', 'SV size', 'VAF', 'Case ID', 'Found in case', 'Case count', 'Control ID', 'Found in control', 'Control count', 'Algorithm', 'fractionalCopyNumber', 'SV size control', 'fractionalCopyNumber_control', 'Confidence_control', 'Confidence', 'CallType']
+        empty_cols = ['Cell type', 'Event Type', 'Id', 'Unique to case', 'ChrA location', 'ChrB location', 'Start', 'Stop', 'SV size', 'VAF', 'Case ID', 'Found in case', 'Case count', 'Control ID', 'Found in control', 'Control count', 'Algorithm', 'fractionalCopyNumber', 'SV size control', 'fractionalCopyNumber_control', 'CallType']
         aneu_comp_table_indexed = pd.DataFrame(columns=empty_cols)
         unique_case_aneu_subset = pd.DataFrame(columns=aneu_reindex_cols)
     return unique_case_aneu_subset, aneu_comp_table_indexed
@@ -326,7 +326,7 @@ def process_smap(dual_smap_frame):
     Args:
         dual_smap_frame (pd.DataFrame): DataFrame consisting of dual annotation SV calls
     """
-    smap_reindex_cols = ['Cell type', 'Type', 'SmapEntryID', 'Unique to case', 'RefcontigID1', 'RefcontigID2', 'RefStartPos', 'RefEndPos', 'SVsize', 'VAF', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber', 'Confidence','Found_in_control_sample_molecules','Found_in_control_sample_assembly']
+    smap_reindex_cols = ['Cell type', 'Type', 'SmapEntryID', 'Unique to case', 'RefcontigID1', 'RefcontigID2', 'RefStartPos', 'RefEndPos', 'SVsize', 'VAF', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Control_molecule_count', 'Algorithm', 'fractionalCopyNumber','Found_in_control_sample_molecules','Found_in_control_sample_assembly']
     smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Id', 'Type':'Event Type', 'RefcontigID1':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count','Found_in_control_sample_molecules':'Found in control'})
     smap_subset['CallType'] = 'SV'
     smap_filtered = smap_subset[(smap_subset['Found in control'] != 'yes') & (smap_subset['Found_in_control_sample_assembly'] != 'yes')]
@@ -343,7 +343,7 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
         control_smap_frame (pd.DataFrame): control smap frame
     """
     control_smap_vaf_map = control_smap_frame.loc[:,['SmapEntryID','VAF']].to_dict()['SmapEntryID']
-    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Confidence', 'Confidence_Control', 'Case ID', 'Control ID','Algorithm', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID','Algorithm', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
     smap_subset = smap_subset.reindex(reindex_cols,axis=1)
     smap_subset['Start_Control'] = smap_subset['Start']
     smap_subset['Stop_Control'] = smap_subset['Stop']
@@ -354,7 +354,7 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     aneu_comp_table_indexed.reset_index(drop=True,inplace=True)
     cnv_comp_table_indexed.reset_index(drop=True,inplace=True)
     all_calls = pd.concat([smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed],ignore_index=True,join='outer')
-    convert_dict = {'VAF': float, 'VAF Control': float, 'Confidence':float, 'Confidence_Control':float}
+    convert_dict = {'VAF': float, 'VAF Control': float}
     all_calls = all_calls.astype(convert_dict)
     return all_calls
 
