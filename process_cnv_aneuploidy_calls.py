@@ -333,18 +333,21 @@ def process_smap(dual_smap_frame):
 
     return smap_filtered, smap_subset
 
-def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed):
+def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame):
     """_summary_
 
     Args:
-        smap_subset (_type_): _description_
-        aneu_comp_table_indexed (_type_): _description_
-        cnv_comp_table_indexed (_type_): _description_
+        smap_subset (pd.DataFrame): smap frame returned by read_smap
+        aneu_comp_table_indexed (pd.DataFrame): aneuploidy frame returned by process_aneuploidies
+        cnv_comp_table_indexed (pd.DataFrame): CNV frame returned by process_cnvs
+        control_smap_frame (pd.DataFrame): control smap frame
     """
+    control_smap_vaf_map = control_smap_frame.loc[:,['SmapEntryID','VAF']].to_dict()['SmapEntryID']
     reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Confidence', 'Confidence_Control', 'Case ID', 'Control ID','Algorithm', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
     smap_subset = smap_subset.reindex(reindex_cols,axis=1)
     smap_subset['Start_Control'] = smap_subset['Start']
     smap_subset['Stop_Control'] = smap_subset['Stop']
+    smap_subset['VAF Control'] = smap_subset['Id'].map(control_smap_vaf_map)
     aneu_comp_table_indexed = aneu_comp_table_indexed.reindex(reindex_cols,axis=1)
     cnv_comp_table_indexed = cnv_comp_table_indexed.reindex(reindex_cols,axis=1)
     smap_subset.reset_index(drop=True,inplace=True)
@@ -355,7 +358,7 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     all_calls = all_calls.astype(convert_dict)
     return all_calls
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -367,12 +370,15 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         out_file (str): outfile handle
         case_id (str): case id
         celltype (str): cell type
+        control_smap (str): relative path to smap file from control zip
         cnv_overlap_percentage (float): maximum reciprocal overlap percentage to consider CNV unique to case
         aneuploidy_overlap_percentag (float): maximum fractional coverage difference to consider Aneuploidies unique to case
         cnv_window (int): base pair window to extend start and stop positions by for CNV calls
         cnv_stitch_window (int): base pair window used to extend and join neighboring cnvs that fall within n-basepairs from one another. Defaults to 550000.
     """
     dual_smap_frame = read_smap(dual_smap)
+    control_smap_frame = read_smap(control_smap)
+
     dual_aneuploidy_frame = read_aneuploidy(dual_aneuploidy)
     dual_cnv_frame = read_cnv(dual_cnv)
     stitched_dual_cnvs = stitching(dual_cnv_frame, cnv_stitch_window=cnv_stitch_window)
@@ -390,7 +396,7 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     out_table['Case ID'] = case_id
     out_table['Cell type'] = celltype
 
-    all_calls = process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed)
+    all_calls = process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame)
     all_calls['Case ID'] = case_id
     all_calls['Cell type'] = celltype
 
@@ -406,6 +412,7 @@ def main():
     parser.add_argument('--dual_cnv', type=str, help="relative path to dual annotation *_CNV.txt")
     parser.add_argument('--control_aneuploidy', type=str, help="relative path to control *_Aneuploidy.txt")
     parser.add_argument('--control_cnv', type=str, help="relative path to control *_CNV.txt")
+    parser.add_argument('--control_smap', type=str, help="relative path to control *_Annotated_SV.smap")
     parser.add_argument('--out_file', type=str, help="output file handle")
     parser.add_argument('--case_id', type=str, help="Case ID")
     parser.add_argument('--celltype', type=str, help="cell type")
@@ -431,8 +438,9 @@ def main():
     case_id = args.case_id
     celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
+    control_smap = args.control_smap
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, control_smap, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
