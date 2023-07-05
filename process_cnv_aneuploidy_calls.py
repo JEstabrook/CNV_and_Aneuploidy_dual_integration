@@ -352,7 +352,7 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     all_calls = all_calls.astype(convert_dict)
     return all_calls
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, donor_id, case_id, celltype, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -362,7 +362,6 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         control_aneuploidy (str): relative path to aneuploidy file from control zip
         control_cnv (str): relative path to CNV file from control zip
         out_file (str): outfile handle
-        donor_id (str): donor id
         case_id (str): case id
         celltype (str): cell type
         cnv_overlap_percentage (float): maximum reciprocal overlap percentage to consider CNV unique to case
@@ -395,8 +394,8 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['Cell type'] = celltype
 
     with pd.ExcelWriter(out_file) as writer:
-            all_calls.to_excel(writer, sheet_name='DualAnnotationResults',index=False,float_format="%.3f")
-            out_table.to_excel(writer, sheet_name='Case_Results',index=False,float_format="%.3f")
+            all_calls.to_excel(writer, sheet_name='DualAnnotationResults',index=False,float_format="%.3f", fillna='NA')
+            out_table.to_excel(writer, sheet_name='Case_Results',index=False,float_format="%.3f", fillna='NA')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -428,12 +427,11 @@ def main():
     aneuploidy_overlap_percentage = args.aneuploidy_overlap_percentage
     cnv_overlap_percentage = args.cnv_overlap_percentage
     out_file = args.out_file
-    donor_id = args.donor_id
     case_id = args.case_id
     celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, donor_id, case_id, celltype, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
