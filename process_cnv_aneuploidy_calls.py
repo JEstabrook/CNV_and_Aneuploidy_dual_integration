@@ -284,6 +284,8 @@ def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     cnv_comp_table_indexed['CallType'] = ' CNV'
     cnv_comp_table_indexed['Algorithm'] = 'Region-based'
     cnv_comp_table_indexed['SV size control'] = cnv_comp_table_indexed['Stop_Control'] - cnv_comp_table_indexed['Start_Control']
+    cnv_comp_table_indexed['Found_in_control_sample_assembly'] = 'yes'
+    cnv_comp_table_indexed['Found in case'] = 'yes'
     unique_case_cnvs_subset = unique_case_cnvs.reindex(cnv_reindex_cols, axis=1).rename(columns={'Type':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'Width':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF'})
     unique_case_cnvs_subset['CallType'] = ' CNV'
     return unique_case_cnvs_subset, cnv_comp_table_indexed
@@ -310,6 +312,8 @@ def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
         aneu_comp_table_indexed['Algorithm'] = 'Region-based'
         aneu_comp_table_indexed['fractChrLen_case'] = aneu_comp_table_indexed.apply(lambda row: row['fractChrLen_case'] * contig_length[int(row['ChrA location'])], axis=1)
         aneu_comp_table_indexed['fractChrLen_control'] = aneu_comp_table_indexed.apply(lambda row: row['fractChrLen_control'] * contig_length[int(row['ChrA location'])], axis=1)
+        aneu_comp_table_indexed['Found_in_control_sample_assembly'] = 'yes'
+        aneu_comp_table_indexed['Found in case'] = 'yes'
         aneu_comp_table_indexed = aneu_comp_table_indexed.rename(columns={'fractChrLen_case':'SV size','fractChrLen_control':'SV size Control'})
         unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber'})
         unique_case_aneu_subset['Algorithm'] = 'Region-based'
@@ -343,7 +347,7 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
         control_smap_frame (pd.DataFrame): control smap frame
     """
     control_smap_vaf_map = control_smap_frame.loc[:,['SmapEntryID','VAF']].to_dict()['SmapEntryID']
-    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID','Algorithm', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
     smap_subset = smap_subset.reindex(reindex_cols,axis=1)
     smap_subset['Start_Control'] = smap_subset['Start']
     smap_subset['Stop_Control'] = smap_subset['Stop']
