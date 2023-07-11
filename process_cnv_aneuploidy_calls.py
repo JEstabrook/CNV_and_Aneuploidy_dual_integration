@@ -1,6 +1,7 @@
 
 import os
 import pandas as pd
+import numpy as np
 import argparse
 
 def read_smap(file_path):
@@ -148,28 +149,24 @@ def collapse_rows(df, cnv_stitch_window):
     collapsed_df = pd.DataFrame(collapsed_data)
     return collapsed_df
 
-def calculate_overlap_percentage(set1, set2):
+
+def calculate_overlap_percentage(xlist,ylist):
     """
     Calculates the overlap percentage of two sets of values.
     Arguments:
-    set1 -- First set of values as a tuple (start1, end1).
-    set2 -- Second set of values as a tuple (start2, end2).
+    xlist -- First set of values as a tuple (start1, end1).
+    ylist -- Second set of values as a tuple (start2, end2).
     Returns:
     overlap_percentage -- The overlap percentage as a float.
     """
-    start1, end1 = set1
-    start2, end2 = set2
-    # Calculate the overlap length
-    overlap_length = min(end1, end2) - max(start1, start2)
-    # If there's no overlap, return 0
-    if overlap_length <= 0:
-        return 0.0
-    # Calculate the lengths of the two sets
-    length1 = end1 - start1
-    length2 = end2 - start2
-    # Calculate the overlap percentage
-    overlap_percentage = (overlap_length / min(length1, length2))
-    return overlap_percentage
+    min1 = min(xlist)
+    max1 = max(xlist)
+    min2 = min(ylist)
+    max2 = max(ylist)
+    overlap = max(0, min(max1, max2) - max(min1, min2))
+    length = max1-min1 + max2-min2
+    return 2*overlap/length
+
 
 def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Performs pairwise comparison between case and control DataFrames
@@ -330,12 +327,13 @@ def process_smap(dual_smap_frame):
     smap_reindex_cols = ['Cell type', 'Type', 'SmapEntryID', 'Unique to case', 'RefcontigID1', 'RefcontigID2', 'RefStartPos', 'RefEndPos', 'SVsize', 'VAF', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Control_molecule_count', 'fractionalCopyNumber','Found_in_control_sample_molecules','Found_in_control_sample_assembly']
     smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Id', 'Type':'Event Type', 'RefcontigID1':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count','Found_in_control_sample_molecules':'Found in control'})
     smap_subset['CallType'] = 'SV'
+    smap_subset['Found in case'] = 'yes'
     smap_filtered = smap_subset[(smap_subset['Found in control'] != 'yes') & (smap_subset['Found_in_control_sample_assembly'] != 'yes')]
 
     return smap_filtered, smap_subset
 
 def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame):
-    """_summary_
+    """ Aggregates and formats all SV, CNV and Aneuploidy calls into dataframe
 
     Args:
         smap_subset (pd.DataFrame): smap frame returned by read_smap
@@ -345,10 +343,8 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     """
     control_smap_vaf_map = control_smap_frame.loc[:,['SmapEntryID','VAF']].to_dict()['SmapEntryID']
     reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
-    smap_subset = smap_subset.reindex(reindex_cols,axis=1)
-    smap_subset['Start_Control'] = smap_subset['Start']
-    smap_subset['Stop_Control'] = smap_subset['Stop']
-    smap_subset['VAF Control'] = smap_subset['Id'].map(control_smap_vaf_map)
+    smap_reindexed = smap_subset.reindex(reindex_cols,axis=1)
+    smap_subset = associate_sv_with_controls(smap_reindexed, control_smap_frame)
     aneu_comp_table_indexed = aneu_comp_table_indexed.reindex(reindex_cols,axis=1)
     cnv_comp_table_indexed = cnv_comp_table_indexed.reindex(reindex_cols,axis=1)
     smap_subset.reset_index(drop=True,inplace=True)
@@ -358,6 +354,102 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     convert_dict = {'VAF': float, 'VAF Control': float}
     all_calls = all_calls.astype(convert_dict)
     return all_calls
+
+def associate_sv_with_controls(smap_subset, control_smap_frame):
+    """ Aligns control SVs with Case using dual VAP default parameters
+    Args:
+        smap_subset (pd.DataFrame): _description_
+        control_smap_frame (pd.DataFrame): _description_
+    """
+    ins_del_position_overlap = 10000
+    ins_del_size_percent_similarity = 50
+    inversion_position_overlap = 50000
+    translocation_position_overlap = 50000
+    duplication_position_overlap = 10000
+    duplication_size_percent_similarity = 50
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
+    smap_subset = smap_subset.reindex(reindex_cols,axis=1)
+    smap_subset['Start_Control'] = np.nan
+    smap_subset['Stop_Control'] = np.nan
+    smap_subset['VAF Control'] = np.nan
+    smap_subset['Start'] = smap_subset['Start'].astype(float)
+    smap_subset['Stop'] = smap_subset['Stop'].astype(float)
+    control_smap_frame['RefStartPos'] = control_smap_frame['RefStartPos'].astype(float)
+    control_smap_frame['RefEndPos'] = control_smap_frame['RefEndPos'].astype(float)
+    smap_subset_updated = smap_subset.copy()
+    grouped_calls = smap_subset.groupby(['Event Type','ChrA location'])
+    for (event_type, chr1), smap_subset_frame in grouped_calls:
+        control_subset = control_smap_frame[(control_smap_frame['Type'] == event_type) & (control_smap_frame['RefcontigID1'] == chr1)]
+        if (event_type == 'insertion') or (event_type == 'deletion'):
+            for _, row in smap_subset_frame.iterrows():
+                sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-ins_del_position_overlap,row['Start']+ins_del_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-ins_del_position_overlap,row['Stop']+ins_del_position_overlap))]
+                overlap_percent = [(float(calculate_overlap_percentage(set([row['Start'],row['Stop']]),set([control_row['RefStartPos'],control_row['RefEndPos']])))*100.0) > ins_del_size_percent_similarity for _,control_row in sub_control_frame.iterrows()]
+                sub_control_frame = sub_control_frame.loc[overlap_percent]
+                if sub_control_frame.shape[0] > 0:
+                    sub_control_values = sub_control_frame.loc[:,['RefStartPos','RefEndPos', 'VAF', 'SVsize']].iloc[0,:].to_frame().T
+                    smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
+                    smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
+                    smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
+                else:
+                    print('No Match!')
+                    print(chr1)
+                    print(event_type)
+                    print(smap_subset_frame)
+                    print(row.to_frame().T)
+                    print(control_subset)
+        if (event_type.startswith('inversion')):
+            for _, row in smap_subset_frame.iterrows():
+                sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-inversion_position_overlap,row['Start']+inversion_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-inversion_position_overlap,row['Stop']+inversion_position_overlap))]
+                if sub_control_frame.shape[0] > 0:
+                    sub_control_values = sub_control_frame.loc[:,['RefStartPos','RefEndPos', 'VAF', 'SVsize']].iloc[0,:].to_frame().T
+                    smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
+                    smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
+                    smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
+                else:
+                    print('No Match!')
+                    print(chr1)
+                    print(event_type)
+                    print(smap_subset_frame)
+                    print(row.to_frame().T)
+                    print(control_subset)    
+        if (event_type.startswith('trans')):
+            for _, row in smap_subset_frame.iterrows():
+                sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-translocation_position_overlap,row['Start']+translocation_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-translocation_position_overlap,row['Stop']+translocation_position_overlap))]
+                if sub_control_frame.shape[0] > 0:
+                    sub_control_values = sub_control_frame.loc[:,['RefStartPos','RefEndPos', 'VAF', 'SVsize']].iloc[0,:].to_frame().T
+                    smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
+                    smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
+                    smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
+                else:
+                    print('No Match!')
+                    print(chr1)
+                    print(event_type)
+                    print(smap_subset_frame)
+                    print(row.to_frame().T)
+                    print(control_subset)    
+        if (event_type.startswith('duplication')):
+            for _, row in smap_subset_frame.iterrows():
+                sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-duplication_position_overlap,row['Start']+duplication_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-duplication_position_overlap,row['Stop']+duplication_position_overlap))]
+                overlap_percent = [(float(calculate_overlap_percentage(set([row['Start'],row['Stop']]),set([control_row['RefStartPos'],control_row['RefEndPos']])))*100.0) > duplication_size_percent_similarity for _,control_row in sub_control_frame.iterrows()]
+                sub_control_frame = sub_control_frame.loc[overlap_percent]
+                if sub_control_frame.shape[0] > 0:
+                    sub_control_values = sub_control_frame.loc[:,['RefStartPos','RefEndPos', 'VAF', 'SVsize']].iloc[0,:].to_frame().T
+                    smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
+                    smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
+                    smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
+                else:
+                    print('No Match!')
+                    print(chr1)
+                    print(event_type)
+                    print(smap_subset_frame)
+                    print(row.to_frame().T)
+                    print(control_subset)
+    return smap_subset_updated
+        
 
 def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
