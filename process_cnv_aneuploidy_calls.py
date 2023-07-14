@@ -178,6 +178,10 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
     Returns:
         pd.DataFrame: Filtered case DataFrame
     """
+    # case=stitched_dual_cnvs
+    # control=stitched_control_cnvs 
+    # cnv_overlap_percentage=cnv_overlap_percentage
+    # cnv_window=cnv_window
     case['Width'] = case['Width'].astype(float)
     control['Width'] = control['Width'].astype(float)
     control['unique_id'] = control[['Start','End','Width','diff']].sum(axis=1).map(hash)
@@ -196,6 +200,7 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
                 case_specific.columns = case_specific.columns + '_Case'
                 case_id = case_specific['unique_id_Case'].values[0]
                 n = 0
+                append = False
                 for _, control_row in control_group.iterrows():
                     control_specific = control_row.copy().to_frame().T
                     control_specific.columns = control_specific.columns + '_Control'
@@ -205,19 +210,21 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
                     width_ratio = case_row['Width'] / control_row['Width']
                     overlap_percent = calculate_overlap_percentage(set([case_row['Start'],case_row['End']]),set([control_row['Start'],control_row['End']]))
                     if start_diff >= cnv_window and end_diff >= cnv_window and overlap_percent <= cnv_overlap_percentage and case_id not in case_checked and control_id not in control_checked:
-                        filtered_rows.append(case_row)
+                        filtered_rows.append(case_row.to_frame().T)
                         break  # Move to the next case row
                     if n == 0:
-                        if control_id not in control_checked:
+                        if (control_id not in control_checked) and (start_diff <= cnv_window or end_diff <= cnv_window or overlap_percent >= cnv_overlap_percentage):
                             case_control_overlap = pd.concat([case_specific.reset_index(drop=True),control_specific.reset_index(drop=True)],axis=1)
                             case_checked.append(case_id)
                             control_checked.append(control_id)
                             n +=1
+                            append = True
                     else:
                         if (control_specific['End_Control'].values[0] > case_control_overlap['End_Control'].values[0]) and (control_specific['Start_Control'].values[0] < case_control_overlap['End_Case'].values[0]):
                             case_control_overlap['End_Control'] = control_specific['End_Control'].values[0]
                             control_checked.append(control_id)
-                case_overlap.append(case_control_overlap)
+                if append: # append merged overlapping case control
+                    case_overlap.append(case_control_overlap)
         else:
             [filtered_rows.append(x[1].to_frame().T) for x in case_group.iterrows()]
     if len(filtered_rows) == 0:
@@ -274,9 +281,9 @@ def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     Returns:
         pd.DataFrame: Filtered case DataFrame
     """
-    cnv_reindex_cols = ['Cell type', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'fractionalCopyNumber']
+    cnv_reindex_cols = ['Cell type', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractionalCopyNumber']
     unique_case_cnvs, cnv_comp_table = pairwise_comparison(case=case,control=control, cnv_overlap_percentage=cnv_overlap_percentage, cnv_window=cnv_window)
-    cnv_reindex_comp_cols = ['Cell type', 'Type_Case', 'Id_Case', 'Unique to case', 'chr_Case', 'RefcontigID2', 'Start_Case', 'End_Case', 'Width_Case', 'AlleleFreq_Case', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'fractionalCopyNumber','Start_Control', 'End_Control', 'Width_Control', 'AlleleFreq_Control']
+    cnv_reindex_comp_cols = ['Cell type', 'Type_Case', 'Id_Case', 'Unique to case', 'chr_Case', 'RefcontigID2', 'Start_Case', 'End_Case', 'Width_Case', 'AlleleFreq_Case', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractionalCopyNumber_Case', 'fractionalCopyNumber_Control','Start_Control', 'End_Control', 'Width_Control', 'AlleleFreq_Control']
     cnv_comp_table_indexed = cnv_comp_table.reindex(cnv_reindex_comp_cols, axis=1).rename(columns={'Type_Case':'Event Type', 'Id_Case':'Id','chr_Case':'ChrA location', 'RefcontigID2':'ChrB location','Start_Case':'Start','End_Case':'Stop', 'Width_Case':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq_Case':'VAF','AlleleFreq_Control':'VAF Control','Width_Control':'SV size Control','End_Control':'Stop_Control'})
     cnv_comp_table_indexed['CallType'] = ' CNV'
     cnv_comp_table_indexed['SV size control'] = cnv_comp_table_indexed['Stop_Control'] - cnv_comp_table_indexed['Start_Control']
@@ -299,10 +306,10 @@ def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
         aneu_comp_table_indexed (pd.DataFrame): Aneuploidy events shared across control and case
     """
     contig_length = {1: 248956422.0, 2: 242193529.0, 3: 198295559.0, 4: 190214555.0, 5: 181538259.0, 6: 170805979.0, 7: 159345973.0, 8: 145138636.0, 9: 138394717.0, 10: 133797422.0, 11: 135086622.0, 12: 133275309.0, 13: 114364328.0, 14: 107043718.0, 15: 101991189.0, 16: 90338345.0, 17: 83257441.0, 18: 80373285.0, 19: 58617616.0, 20: 64444167.0, 21: 46709983.0, 22: 50818468.0, 23: 156040895.0, 24: 57227415.0}
-    aneu_reindex_cols = ['Cell type', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'fractCN','score']
+    aneu_reindex_cols = ['Cell type', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractCN','score']
     if (case.shape[0] != 0) & (control.shape[0] !=0):
         unique_case_aneuploidies, aneu_comp_table = compare_aneuploidy_data(case=case, control=control, aneuploidy_overlap_percentage=aneuploidy_overlap_percentage)
-        aneu_reindex_comp_cols = ['Cell type', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen_case', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found in control', 'Control_molecule_count', 'fractCN_case', 'fractChrLen_control', 'fractCN_control', 'score_control','score_case']
+        aneu_reindex_comp_cols = ['Cell type', 'types', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'fractChrLen_case', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractCN_case', 'fractChrLen_control', 'fractCN_control', 'score_control','score_case']
         aneu_comp_table_indexed = aneu_comp_table.reindex(aneu_reindex_comp_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop','Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN_case':'fractionalCopyNumber','fractCN_control':'fractionalCopyNumber_control'})
         aneu_comp_table_indexed['CallType'] = 'Aneuploidy'
         aneu_comp_table_indexed['fractChrLen_case'] = aneu_comp_table_indexed.apply(lambda row: row['fractChrLen_case'] * contig_length[int(row['ChrA location'])], axis=1)
@@ -313,7 +320,7 @@ def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
         unique_case_aneu_subset = unique_case_aneuploidies.reindex(aneu_reindex_cols, axis=1).rename(columns={'types':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'fractChrLen':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF','fractCN':'fractionalCopyNumber'})
         unique_case_aneu_subset['CallType'] = 'Aneuploidy'
     else:
-        empty_cols = ['Cell type', 'Event Type', 'Id', 'Unique to case', 'ChrA location', 'ChrB location', 'Start', 'Stop', 'SV size', 'VAF', 'Case ID', 'Found in case', 'Case count', 'Control ID', 'Found in control', 'Control count', 'fractionalCopyNumber', 'SV size control', 'fractionalCopyNumber_control', 'CallType']
+        empty_cols = ['Cell type', 'Event Type', 'Id', 'Unique to case', 'ChrA location', 'ChrB location', 'Start', 'Stop', 'SV size', 'VAF', 'Case ID', 'Found in case', 'Case count', 'Control ID', 'Found_in_control_sample_molecules', 'Control count', 'fractionalCopyNumber', 'SV size control', 'fractionalCopyNumber_control', 'CallType']
         aneu_comp_table_indexed = pd.DataFrame(columns=empty_cols)
         unique_case_aneu_subset = pd.DataFrame(columns=aneu_reindex_cols)
     return unique_case_aneu_subset, aneu_comp_table_indexed
@@ -325,12 +332,18 @@ def process_smap(dual_smap_frame):
         dual_smap_frame (pd.DataFrame): DataFrame consisting of dual annotation SV calls
     """
     smap_reindex_cols = ['Cell type', 'Type', 'SmapEntryID', 'Unique to case', 'RefcontigID1', 'RefcontigID2', 'RefStartPos', 'RefEndPos', 'SVsize', 'VAF', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Control_molecule_count', 'fractionalCopyNumber','Found_in_control_sample_molecules','Found_in_control_sample_assembly']
-    smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Id', 'Type':'Event Type', 'RefcontigID1':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count','Found_in_control_sample_molecules':'Found in control'})
+    smap_subset = dual_smap_frame.reindex(smap_reindex_cols, axis=1).rename(columns={'SmapEntryID':'Id', 'Type':'Event Type', 'RefcontigID1':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','RefEndPos':'Stop', 'SVsize':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count'})
     smap_subset['CallType'] = 'SV'
     smap_subset['Found in case'] = 'yes'
-    smap_filtered = smap_subset[(smap_subset['Found in control'] != 'yes') & (smap_subset['Found_in_control_sample_assembly'] != 'yes')]
+    smap_filtered = smap_subset[(smap_subset['Found_in_control_sample_molecules'] != 'yes') & (smap_subset['Found_in_control_sample_assembly'] != 'yes')]
 
     return smap_filtered, smap_subset
+
+def convert_to_int(x):
+    try:
+        return int(float(x))
+    except (ValueError, TypeError):
+        return None
 
 def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame):
     """ Aggregates and formats all SV, CNV and Aneuploidy calls into dataframe
@@ -341,19 +354,54 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
         cnv_comp_table_indexed (pd.DataFrame): CNV frame returned by process_cnvs
         control_smap_frame (pd.DataFrame): control smap frame
     """
-    control_smap_vaf_map = control_smap_frame.loc[:,['SmapEntryID','VAF']].to_dict()['SmapEntryID']
-    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber_Case', 'fractionalCopyNumber_Control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found_in_control_sample_molecules', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_final_cols = ['Cell type', 'Event Type', 'CallType', 'Id', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'found_in_control_molecules', 'Found_in_control_sample_assembly', 'Found in control', 'Unique to case', 'ID_case', 'ID_control']
+    map_dict = {'ChrA location':'chrA_case','ChrB location':'chrB_case','Start':'start_case','Stop':'end_case','SV size':'size_case','VAF':'VAF_case','Start_Control':'start_control','Stop_Control':'end_control','SV size control':'size_control','VAF Control':'VAF_control','fractionalCopyNumber_Case':'fractional_copy_number_case','fractionalCopyNumber_Control':'fractional_copy_number_control','Case count':'molecule_count_case','Control count':'molecule_count_control','Found_in_control_sample_molecules':'found_in_control_molecules'}   
     smap_reindexed = smap_subset.reindex(reindex_cols,axis=1)
     smap_subset = associate_sv_with_controls(smap_reindexed, control_smap_frame)
-    aneu_comp_table_indexed = aneu_comp_table_indexed.reindex(reindex_cols,axis=1)
+    aneu_comp_table_indexed = aneu_comp_table_indexed.rename(columns={'fractionalCopyNumber':'fractionalCopyNumber_Case','fractionalCopyNumber_control':'fractionalCopyNumber_Control'}).reindex(reindex_cols,axis=1)
     cnv_comp_table_indexed = cnv_comp_table_indexed.reindex(reindex_cols,axis=1)
     smap_subset.reset_index(drop=True,inplace=True)
     aneu_comp_table_indexed.reset_index(drop=True,inplace=True)
     cnv_comp_table_indexed.reset_index(drop=True,inplace=True)
     all_calls = pd.concat([smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed],ignore_index=True,join='outer')
-    convert_dict = {'VAF': float, 'VAF Control': float}
-    all_calls = all_calls.astype(convert_dict)
+    all_calls = all_calls.rename(columns=map_dict)
+    all_calls['VAF_case'] = all_calls['VAF_case'].astype(float)
+    all_calls['VAF_control'] = all_calls['VAF_control'].astype(float)
+    all_calls['fractional_copy_number_case'] = all_calls['fractional_copy_number_case'].astype(float)
+    all_calls['fractional_copy_number_control'] = all_calls['fractional_copy_number_control'].astype(float)
+    all_calls['size_case'] = all_calls['size_case'].apply(convert_to_int).astype('Int64')
+    all_calls['size_control'] = all_calls['size_control'].apply(convert_to_int).astype('Int64')
+    all_calls['start_case'] = all_calls['start_case'].apply(convert_to_int).astype('Int64')
+    all_calls['end_case'] = all_calls['end_case'].apply(convert_to_int).astype('Int64')
+    all_calls['start_control'] = all_calls['start_control'].apply(convert_to_int).astype('Int64')
+    all_calls['end_control'] = all_calls['end_control'].apply(convert_to_int).astype('Int64')
+    all_calls = all_calls.reindex(reindex_final_cols,axis=1)
+    all_calls['Found in control'] = all_calls.apply(lambda row: 'yes' if row['found_in_control_molecules'] == 'yes' or row['Found_in_control_sample_assembly'] == 'yes' else 'no', axis=1)
     return all_calls
+
+def process_subset_calls(out_table):
+    """ Aggregates and formats all SV, CNV and Aneuploidy calls into dataframe
+
+    Args:
+        out_table (pd.DataFrame): merged CNV, aneuploidy and SV frame unique to case 
+
+    """
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found_in_control_sample_molecules', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_final_cols = ['Cell type', 'Event Type', 'CallType', 'Id', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'found_in_control_molecules', 'Found_in_control_sample_assembly', 'Unique to case', 'ID_case', 'ID_control']
+    map_dict = {'ChrA location':'chrA_case','ChrB location':'chrB_case','Start':'start_case','Stop':'end_case','SV size':'size_case','VAF':'VAF_case','Start_Control':'start_control','Stop_Control':'end_control','SV size control':'size_control','VAF Control':'VAF_control','fractionalCopyNumber':'fractional_copy_number_case','fractionalCopyNumber_control':'fractional_copy_number_control','Case count':'molecule_count_case','Control count':'molecule_count_control','Found_in_control_sample_molecules':'found_in_control_molecules'}
+    out_table_reindexed = out_table.reindex(reindex_cols,axis=1)
+    out_table_reindexed = out_table_reindexed.rename(columns=map_dict)
+    out_table_reindexed['VAF_case'] = out_table_reindexed['VAF_case'].astype(float)
+    out_table_reindexed['VAF_control'] = out_table_reindexed['VAF_control'].astype(float)
+    out_table_reindexed['size_case'] = out_table_reindexed['size_case'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['size_control'] = out_table_reindexed['size_control'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['start_case'] = out_table_reindexed['start_case'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['end_case'] = out_table_reindexed['end_case'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['start_control'] = out_table_reindexed['start_control'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['end_control'] = out_table_reindexed['end_control'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed = out_table_reindexed.reindex(reindex_final_cols,axis=1)
+    return out_table_reindexed
 
 def associate_sv_with_controls(smap_subset, control_smap_frame):
     """ Aligns control SVs with Case using dual VAP default parameters
@@ -367,7 +415,7 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
     translocation_position_overlap = 50000
     duplication_position_overlap = 10000
     duplication_size_percent_similarity = 50
-    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found in control', 'Found_in_control_sample_assembly', 'CallType']
+    reindex_cols = ['Cell type', 'Event Type', 'Id', 'ChrA location', 'ChrB location', 'Start','Start_Control', 'Stop', 'Stop_Control','SV size','SV size control','VAF', 'VAF Control', 'Case count', 'Control count','fractionalCopyNumber', 'fractionalCopyNumber_control', 'Case ID', 'Control ID', 'Unique to case', 'Found in case', 'Found_in_control_sample_molecules', 'Found_in_control_sample_assembly', 'CallType']
     smap_subset = smap_subset.reindex(reindex_cols,axis=1)
     smap_subset['Start_Control'] = np.nan
     smap_subset['Stop_Control'] = np.nan
@@ -391,13 +439,6 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
                     smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
                     smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
                     smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
-                else:
-                    print('No Match!')
-                    print(chr1)
-                    print(event_type)
-                    print(smap_subset_frame)
-                    print(row.to_frame().T)
-                    print(control_subset)
         if (event_type.startswith('inversion')):
             for _, row in smap_subset_frame.iterrows():
                 sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-inversion_position_overlap,row['Start']+inversion_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-inversion_position_overlap,row['Stop']+inversion_position_overlap))]
@@ -406,14 +447,7 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
                     smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
                     smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
                     smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
-                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
-                else:
-                    print('No Match!')
-                    print(chr1)
-                    print(event_type)
-                    print(smap_subset_frame)
-                    print(row.to_frame().T)
-                    print(control_subset)    
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]  
         if (event_type.startswith('trans')):
             for _, row in smap_subset_frame.iterrows():
                 sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-translocation_position_overlap,row['Start']+translocation_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-translocation_position_overlap,row['Stop']+translocation_position_overlap))]
@@ -422,14 +456,7 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
                     smap_subset_updated.loc[row.name,'VAF Control'] = sub_control_values['VAF'].values[0]
                     smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
                     smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
-                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
-                else:
-                    print('No Match!')
-                    print(chr1)
-                    print(event_type)
-                    print(smap_subset_frame)
-                    print(row.to_frame().T)
-                    print(control_subset)    
+                    smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0] 
         if (event_type.startswith('duplication')):
             for _, row in smap_subset_frame.iterrows():
                 sub_control_frame = control_subset[(control_subset['RefStartPos'].between(row['Start']-duplication_position_overlap,row['Start']+duplication_position_overlap)) & (control_subset['RefEndPos'].between(row['Stop']-duplication_position_overlap,row['Stop']+duplication_position_overlap))]
@@ -441,13 +468,6 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
                     smap_subset_updated.loc[row.name,'Start_Control'] = sub_control_values['RefStartPos'].values[0]
                     smap_subset_updated.loc[row.name,'Stop_Control'] = sub_control_values['RefEndPos'].values[0]
                     smap_subset_updated.loc[row.name,'SV size control'] = sub_control_values['SVsize'].values[0]
-                else:
-                    print('No Match!')
-                    print(chr1)
-                    print(event_type)
-                    print(smap_subset_frame)
-                    print(row.to_frame().T)
-                    print(control_subset)
     return smap_subset_updated
         
 
@@ -488,6 +508,7 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     out_table = pd.concat([smap_filtered, unique_case_aneu_subset, unique_case_cnvs_subset],ignore_index=True)
     out_table['Case ID'] = case_id
     out_table['Cell type'] = celltype
+    out_table = process_subset_calls(out_table)
 
     all_calls = process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame)
     all_calls['Case ID'] = case_id

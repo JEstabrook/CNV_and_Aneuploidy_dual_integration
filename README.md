@@ -10,6 +10,7 @@ Current implementation of this script utilizes the following packages
 Python (3.10.4)
 Pandas (1.4.3)
 argparse (1.1)
+numpy (1.23.2)
 ```
 
 ** Ensure that all filters are applied prior to downloading data **
