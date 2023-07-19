@@ -472,7 +472,7 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
     return smap_subset_updated
         
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -483,6 +483,7 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         control_cnv (str): relative path to CNV file from control zip
         out_file (str): outfile handle
         case_id (str): case id
+        control_id (str): control id
         celltype (str): cell type
         control_smap (str): relative path to smap file from control zip
         cnv_overlap_percentage (float): maximum reciprocal overlap percentage to consider CNV unique to case
@@ -507,12 +508,14 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     smap_filtered, smap_subset = process_smap(dual_smap_frame)
 
     out_table = pd.concat([smap_filtered, unique_case_aneu_subset, unique_case_cnvs_subset],ignore_index=True)
-    out_table['Case ID'] = case_id
+    out_table['ID_case'] = case_id
+    out_table['ID_control'] = control_id
     out_table['Cell type'] = celltype
     out_table = process_subset_calls(out_table)
 
     all_calls = process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame)
-    all_calls['Case ID'] = case_id
+    all_calls['ID_case'] = case_id
+    all_calls['ID_control'] = control_id
     all_calls['Cell type'] = celltype
 
     with pd.ExcelWriter(out_file) as writer:
@@ -530,6 +533,7 @@ def main():
     parser.add_argument('--control_smap', type=str, help="relative path to control *_Annotated_SV.smap")
     parser.add_argument('--out_file', type=str, help="output file handle")
     parser.add_argument('--case_id', type=str, help="Case ID")
+    parser.add_argument('--control_id', type=str, help="Control ID")
     parser.add_argument('--celltype', type=str, help="cell type")
     parser.add_argument('--cnv_overlap_percentage', type=float, nargs='?', const=1, default=0.3, help="maximum reciprocal overlap ratio allowed for CNV calls to be considered unique")
     parser.add_argument('--aneuploidy_overlap_percentage', type=float, nargs='?', const=1, default=0.5,  help="maximum fractional difference allowed for Aneuploidy calls to be considered unique")
@@ -551,11 +555,12 @@ def main():
     cnv_overlap_percentage = args.cnv_overlap_percentage
     out_file = args.out_file
     case_id = args.case_id
+    control_id = args.control_id
     celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
     control_smap = args.control_smap
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, celltype, control_smap, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
