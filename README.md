@@ -13,6 +13,28 @@ argparse (1.1)
 numpy (1.23.2)
 ```
 
+** Conda installation **
+
+```
+wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+#Follow-installation prompts
+bash Miniconda3-py39_4.12.0-Linux-x86_64.sh
+```
+
+** Mamba installation **
+
+```
+conda install -n base -c conda-forge mamba
+mamba create -c conda-forge -c bioconda -f envs/python_env.yaml
+```
+
+This will install dependencies into an isolated software environment, that has to be activated with
+
+```
+$ conda activate snakemake
+$ snakemake --help
+```
+
 ** Ensure that all filters are applied prior to downloading data **
 Download the filtered CNV and Aneuploidy calls for the control/mock sample from Access. Download the smap, CNV, and Aneuploidy results from the Dual annotation results from Access. Place both results in a folder and unzip. To run the script activate an environment that contains the packages above and from the directory where `process_cnv_aneuploidy_calls.py` is located run the script.
 
