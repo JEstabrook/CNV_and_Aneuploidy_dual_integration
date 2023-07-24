@@ -282,16 +282,20 @@ def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
         pd.DataFrame: Filtered case DataFrame
     """
     cnv_reindex_cols = ['Cell type', 'Type', 'Id', 'Unique to case', 'chr', 'RefcontigID2', 'Start', 'End', 'Width', 'AlleleFreq', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractionalCopyNumber']
+    cnv_reindex_cols_unique_to_comp = ['Cell type', 'Event Type', 'Id', 'Unique to case', 'ChrA location','ChrB location', 'Start', 'Stop', 'SV size', 'VAF', 'Case ID','Found in case', 'Case count', 'Control ID','Found_in_control_sample_molecules', 'Control count','fractionalCopyNumber_Case', 'fractionalCopyNumber_Control','Start_Control', 'Stop_Control', 'SV size Control', 'VAF Control','CallType', 'SV size control', 'Found_in_control_sample_assembly']    
     unique_case_cnvs, cnv_comp_table = pairwise_comparison(case=case,control=control, cnv_overlap_percentage=cnv_overlap_percentage, cnv_window=cnv_window)
     cnv_reindex_comp_cols = ['Cell type', 'Type_Case', 'Id_Case', 'Unique to case', 'chr_Case', 'RefcontigID2', 'Start_Case', 'End_Case', 'Width_Case', 'AlleleFreq_Case', 'Case ID', 'Found in case', 'Self_molecule_count', 'Control ID', 'Found_in_control_sample_molecules', 'Control_molecule_count', 'fractionalCopyNumber_Case', 'fractionalCopyNumber_Control','Start_Control', 'End_Control', 'Width_Control', 'AlleleFreq_Control']
     cnv_comp_table_indexed = cnv_comp_table.reindex(cnv_reindex_comp_cols, axis=1).rename(columns={'Type_Case':'Event Type', 'Id_Case':'Id','chr_Case':'ChrA location', 'RefcontigID2':'ChrB location','Start_Case':'Start','End_Case':'Stop', 'Width_Case':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq_Case':'VAF','AlleleFreq_Control':'VAF Control','Width_Control':'SV size Control','End_Control':'Stop_Control'})
-    cnv_comp_table_indexed['CallType'] = ' CNV'
+    cnv_comp_table_indexed['CallType'] = 'CNV'
     cnv_comp_table_indexed['SV size control'] = cnv_comp_table_indexed['Stop_Control'] - cnv_comp_table_indexed['Start_Control']
     cnv_comp_table_indexed['Found_in_control_sample_assembly'] = 'yes'
     cnv_comp_table_indexed['Found in case'] = 'yes'
     unique_case_cnvs_subset = unique_case_cnvs.reindex(cnv_reindex_cols, axis=1).rename(columns={'Type':'Event Type', 'chr':'ChrA location', 'RefcontigID2':'ChrB location','RefStartPos':'Start','End':'Stop', 'Width':'SV size', 'Self_molecule_count':'Case count','Control_molecule_count':'Control count', 'AlleleFreq':'VAF'})
-    unique_case_cnvs_subset['CallType'] = ' CNV'
-    return unique_case_cnvs_subset, cnv_comp_table_indexed
+    unique_case_cnvs_subset['CallType'] = 'CNV'
+    unique_case_to_merge = unique_case_cnvs_subset.rename(columns={'fractionalCopyNumber':'fractionalCopyNumber_Case'}).reindex(cnv_reindex_cols_unique_to_comp,axis=1)
+    unique_case_to_merge['Found_in_control_sample_assembly'] = 'no'
+    joined_cnv_comp = pd.concat([cnv_comp_table_indexed, unique_case_to_merge])
+    return unique_case_cnvs_subset, joined_cnv_comp
 
 def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
     """Processes Aneuploidy calls and reports unique and paired case & control Aneuploidy calls
@@ -403,6 +407,8 @@ def process_subset_calls(out_table):
     out_table_reindexed['end_case'] = out_table_reindexed['end_case'].apply(convert_to_int).astype('Int64')
     out_table_reindexed['start_control'] = out_table_reindexed['start_control'].apply(convert_to_int).astype('Int64')
     out_table_reindexed['end_control'] = out_table_reindexed['end_control'].apply(convert_to_int).astype('Int64')
+    out_table_reindexed['size_case'] = out_table_reindexed['size_case'].replace(-1,np.nan)
+    out_table_reindexed['size_control'] = out_table_reindexed['size_control'].replace(-1,np.nan)
     out_table_reindexed = out_table_reindexed.reindex(reindex_final_cols,axis=1)
     return out_table_reindexed
 
@@ -474,6 +480,24 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
     return smap_subset_updated
         
 
+def reorder_sheet(all_calls):
+    """ Function reorders and subsets results based on desired columns and split data by SV and CNV/Aneuploidy calls
+
+    Args:
+        all_calls (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    reindex_final_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'Found_in_control_sample_assembly', 'found_in_control_molecules', 'Found in control']
+    all_calls = all_calls.reindex(reindex_final_cols,axis=1)
+    all_calls['size_case'] = all_calls['size_case'].replace(-1,np.nan)
+    all_calls['size_control'] = all_calls['size_control'].replace(-1,np.nan)
+    cnv_calls = all_calls[all_calls['CallType']!='SV']
+    sv_calls = all_calls[all_calls['CallType'] =='SV']
+    return cnv_calls, sv_calls
+
+
 def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
@@ -519,9 +543,11 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['ID_case'] = case_id
     all_calls['ID_control'] = control_id
     all_calls['Cell type'] = celltype
+    cnv_calls, sv_calls = reorder_sheet(all_calls)
 
     with pd.ExcelWriter(out_file) as writer:
-            all_calls.to_excel(writer, sheet_name='DualAnnotationResults',index=False,float_format="%.3f", na_rep='NA')
+            sv_calls.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
+            cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
             out_table.to_excel(writer, sheet_name='Case_Results',index=False,float_format="%.3f", na_rep='NA')
 
 def main():
