@@ -3,9 +3,10 @@ import os
 import pandas as pd
 import numpy as np
 import argparse
+import json
 
 def read_smap(file_path):
-    """ Function parses smap file
+    """ Function parses smap filed
 
     Args:
         file_path (str): relative path to smap file to be parsed
@@ -492,8 +493,8 @@ def reorder_sheet(all_calls):
     reindex_final_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'Found_in_control_sample_assembly', 'found_in_control_molecules', 'Found in control']
     reindex_final_sv_cols = ['Cell type', 'ID_case', 'ID_control', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case','molecule_count_case', 'molecule_count_control','Found in control']
     reindex_final_cnv_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'start_case', 'end_case', 'size_case','fractional_copy_number_case','fractional_copy_number_control','Found in control']
-    name_sv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name',' ID_control':'Control Sample Name','Event Type':'Event Type', 'chrA_case':'Case Start Chromosome','chrB_case':'Case End Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','molecule_count_case':'Case Molecule Count','molecule_count_control':'Control Molecule Count', 'Found in control':'Found in Control'}
-    name_cnv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name',' ID_control':'Control Sample Name','CallType':'Call Type','Event Type':'Event Type','chrA_case':'Case Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','fractional_copy_number_case':'Case Fractional Copy Number','fractional_copy_number_control':'Control Fractional Copy Number', 'Found in control':'Found in Control'}
+    name_sv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name','ID_control':'Control Sample Name','Event Type':'Event Type', 'chrA_case':'Case Start Chromosome','chrB_case':'Case End Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','molecule_count_case':'Case Molecule Count','molecule_count_control':'Control Molecule Count', 'Found in control':'Found in Control'}
+    name_cnv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name','ID_control':'Control Sample Name','CallType':'Call Type','Event Type':'Event Type','chrA_case':'Case Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','fractional_copy_number_case':'Case Fractional Copy Number','fractional_copy_number_control':'Control Fractional Copy Number', 'Found in control':'Found in Control'}
     all_calls = all_calls.reindex(reindex_final_cols,axis=1)
     all_calls['size_case'] = all_calls['size_case'].replace(-1,np.nan)
     all_calls['size_control'] = all_calls['size_control'].replace(-1,np.nan)
@@ -504,8 +505,22 @@ def reorder_sheet(all_calls):
 
     return cnv_calls_final, sv_calls_final
 
+def process_json(input_json):
+    """ Function parses json to extract CNV statistics and coerces dictionary into DataFrame
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+    Args:
+        input_json (str): relative path to input json
+    Returns
+    """
+    with open(input_json) as json_file:
+        data = json.load(json_file)
+    cnv_statistics = pd.DataFrame.from_dict(data['CNV Statistics']['value']).T.iloc[1:,:].loc[:,['value','description']]
+    cnv_map_value = {'Percent above expected (2 Mbp window)':20, 'Percent above expected (6 Mbp window)':20,'Correlation with label density':0.25,'Wave template correlation':0.4}
+    cnv_statistics['Metrics_Passed'] = cnv_statistics['value'].apply(lambda x: 'Fail' if cnv_statistics.index[cnv_statistics['value'] == x][0] in cnv_map_value and float(x) > cnv_map_value[cnv_statistics.index[cnv_statistics['value'] == x][0]] else ('Pass' if cnv_statistics.index[cnv_statistics['value'] == x][0] in cnv_map_value else 'NA'))
+    cnv_statistics.index.name='Metric'
+    return cnv_statistics
+
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, input_json, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -519,6 +534,7 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         control_id (str): control id
         celltype (str): cell type
         control_smap (str): relative path to smap file from control zip
+        input_json (str): relative path to input json file that contains CNV metrics
         cnv_overlap_percentage (float): maximum reciprocal overlap percentage to consider CNV unique to case
         aneuploidy_overlap_percentag (float): maximum fractional coverage difference to consider Aneuploidies unique to case
         cnv_window (int): base pair window to extend start and stop positions by for CNV calls
@@ -552,10 +568,15 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['Cell type'] = celltype
     cnv_calls, sv_calls = reorder_sheet(all_calls)
 
-    with pd.ExcelWriter(out_file) as writer:
-            sv_calls.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
-            cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
+    cnv_statistics = process_json(input_json)
 
+    include_cnv_calls = (cnv_statistics['Metrics_Passed'] == 'Fail').sum()
+
+    with pd.ExcelWriter(out_file) as writer:
+        sv_calls.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
+        if include_cnv_calls == 0:
+            cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
+        cnv_statistics.to_excel(write, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -566,6 +587,7 @@ def main():
     parser.add_argument('--control_aneuploidy', type=str, help="relative path to control *_Aneuploidy.txt")
     parser.add_argument('--control_cnv', type=str, help="relative path to control *_CNV.txt")
     parser.add_argument('--control_smap', type=str, help="relative path to control *_Annotated_SV.smap")
+    parser.add_argument('--input_json', type=str, help="relative path to control report.json containing CNV metrics")
     parser.add_argument('--out_file', type=str, help="output file handle")
     parser.add_argument('--case_id', type=str, help="Case ID")
     parser.add_argument('--control_id', type=str, help="Control ID")
@@ -594,8 +616,9 @@ def main():
     celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
     control_smap = args.control_smap
+    input_json = args.input_json
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, input_json=input_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
