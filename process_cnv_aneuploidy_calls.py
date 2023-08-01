@@ -168,6 +168,116 @@ def calculate_overlap_percentage(xlist,ylist):
     length = max1-min1 + max2-min2
     return 2*overlap/length
 
+# def calculate_overlap_percentage_by_row(df, threshold=0.95):
+#     """
+#     Calculates the overlap percentage of two sets of values for every row relative to the first row.
+#     If all rows overlap by more than a given threshold, return only the first row. 
+#     Otherwise, return the first row and any rows that don't overlap by the threshold.
+#     Arguments:
+#     df -- pandas DataFrame containing columns "Case Event Start" and "Case Event End"
+#     threshold -- percentage threshold for filtering rows (default 0.95)
+#     Returns:
+#     df_filtered -- Filtered DataFrame.
+#     """
+#     overlap_percentages = []
+#     df.reset_index(inplace=True)
+#     start1, end1 = df.iloc[0]["Case Event Start"], df.iloc[0]["Case Event End"]
+#     min1, max1 = min(start1, end1), max(start1, end1)
+#     for i in range(len(df)):
+#         start2, end2 = df.iloc[i]["Case Event Start"], df.iloc[i]["Case Event End"]
+#         min2, max2 = min(start2, end2), max(start2, end2)
+#         overlap = max(0, min(max1, max2) - max(min1, min2))
+#         length = (max1 - min1) + (max2 - min2)
+#         overlap_percentage = 2 * overlap / length if length != 0 else 0
+#         overlap_percentages.append(overlap_percentage)
+#     df['Overlap Percentage'] = overlap_percentages
+#     # If all rows (except the first) overlap by more than the threshold, return only the first row
+#     if all(percentage > threshold for percentage in overlap_percentages[1:]):
+#         return df.iloc[[0]]
+#     # Otherwise, return the first row and any rows that don't overlap by the threshold
+#     else:
+#         return df[(df.index == 0) | (df['Overlap Percentage'] <= threshold)]
+
+
+def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
+    """
+    Calculates the overlap percentage of two sets of values for every row relative to the first row.
+    If all rows overlap by more than a given threshold and the average delta of 'Case Event Size' ratios
+    is below size_threshold, return only the first row. Otherwise, return the first row and any rows 
+    that don't meet these criteria.
+    Arguments:
+    df -- pandas DataFrame containing columns "Case Event Start", "Case Event End", and "Case Event Size"
+    threshold -- percentage threshold for filtering rows based on overlap (default 0.95)
+    size_threshold -- threshold for filtering rows based on 'Case Event Size' ratios (default 0.1)
+    Returns:
+    df_filtered -- Filtered DataFrame.
+    """
+    df.reset_index(inplace=True)
+    overlap_percentages = []
+    size_ratios = []
+    start1, end1, size1 = df.iloc[0][["Case Event Start", "Case Event End", "Case Event Size"]]
+    min1, max1 = min(start1, end1), max(start1, end1)
+    for i in range(len(df)):
+        start2, end2, size2 = df.iloc[i][["Case Event Start", "Case Event End", "Case Event Size"]]
+        min2, max2 = min(start2, end2), max(start2, end2)
+        overlap = max(0, min(max1, max2) - max(min1, min2))
+        length = (max1 - min1) + (max2 - min2)
+        overlap_percentage = 2 * overlap / length if length != 0 else 0
+        size_ratio = abs(size1/size2 - 1) + abs(size2/size1 - 1)
+        overlap_percentages.append(overlap_percentage)
+        size_ratios.append(size_ratio)
+    df['Overlap Percentage'] = overlap_percentages
+    df['Size Ratio'] = size_ratios
+    # If all rows (except the first) overlap by more than the threshold and the average size ratio is less than size_threshold
+    # then return only the first row
+    if all(percentage > threshold for percentage in overlap_percentages[1:]) and np.mean(size_ratios[1:]) < size_threshold:
+        return df.iloc[[0]]
+    # Otherwise, return the first row and any rows that don't meet these criteria
+    else:
+        return df[(df.index == 0) | (df['Overlap Percentage'] <= threshold) | (df['Size Ratio'] >= size_threshold)]
+
+def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
+    """
+    Calculates the overlap percentage of two sets of values for every row relative to the first row.
+    If all rows overlap by more than a given threshold and the average delta of 'Case Event Size' ratios
+    is below size_threshold, return only the first row. Otherwise, return the first row and any rows 
+    that don't meet these criteria. If 'Case Event Size' is NaN, assume the sizes are equal.
+    Arguments:
+    df -- pandas DataFrame containing columns "Case Event Start", "Case Event End", and "Case Event Size"
+    threshold -- percentage threshold for filtering rows based on overlap (default 0.95)
+    size_threshold -- threshold for filtering rows based on 'Case Event Size' ratios (default 0.1)
+    Returns:
+    df_filtered -- Filtered DataFrame.
+    """
+    df = df.sort_values(['Found in Control','Case Molecule Count'],ascending=[False,False])
+    df.reset_index(inplace=True,drop=True)
+    overlap_percentages = []
+    size_ratios = []
+    start1, end1, size1 = df.iloc[0][["Case Event Start", "Case Event End", "Case Event Size"]]
+    min1, max1 = min(start1, end1), max(start1, end1)
+    for i in range(len(df)):
+        start2, end2, size2 = df.iloc[i][["Case Event Start", "Case Event End", "Case Event Size"]]
+        min2, max2 = min(start2, end2), max(start2, end2)
+        overlap = max(0, min(max1, max2) - max(min1, min2))
+        length = (max1 - min1) + (max2 - min2)
+        overlap_percentage = 2 * overlap / length if length != 0 else 0
+        # If 'Case Event Size' is NaN, assume the sizes are equal
+        if pd.isna(size1) or pd.isna(size2):
+            size_ratio = 0
+        else:
+            size_ratio = abs(size1/size2 - 1) + abs(size2/size1 - 1)
+        overlap_percentages.append(overlap_percentage)
+        size_ratios.append(size_ratio)
+    df['Overlap Percentage'] = overlap_percentages
+    df['Size Ratio'] = size_ratios
+    # If all rows (except the first) overlap by more than the threshold and the average size ratio is less than size_threshold
+    # then return only the first row
+    if all(percentage > threshold for percentage in overlap_percentages[1:]) and np.mean(size_ratios[1:]) < size_threshold:
+        return df.iloc[[0]]
+    # Otherwise, return the first row and any rows that don't meet these criteria
+    else:
+        return df[(df.index == 0) | (df['Overlap Percentage'] <= threshold) | (df['Size Ratio'] >= size_threshold)]
+
 
 def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Performs pairwise comparison between case and control DataFrames
@@ -520,6 +630,27 @@ def process_json(input_json):
     cnv_statistics.index.name='Metric'
     return cnv_statistics
 
+def filter_duplicate_calls(sv_calls):
+    """ Filters duplicate map calls made by RVP pipeline
+    Args:
+        sv_calls (pd.DataFrame): Frame returned from reorder_sheet()
+    """
+    sv_calls.reset_index(inplace=True,drop=True)
+    sv_calls['Case Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
+    sv_calls['Control Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
+    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Found in Control','Case Molecule Count'],ascending=[True,True,False,False])
+    grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
+    final_calls = []
+    for (event_type, chrom),subset_frame in grouped_calls:
+        if subset_frame.shape[0] == 1:
+            final_calls.append(subset_frame)
+        else:
+            subset_frame = calculate_overlap_percentage_by_row(subset_frame).iloc[:,:-2]
+            final_calls.append(subset_frame)
+    sv_final_calls = pd.concat(final_calls)
+    return sv_final_calls
+
+
 def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, input_json, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
@@ -567,16 +698,16 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['ID_control'] = control_id
     all_calls['Cell type'] = celltype
     cnv_calls, sv_calls = reorder_sheet(all_calls)
-
+    sv_calls_filtered = filter_duplicate_calls(sv_calls)
     cnv_statistics = process_json(input_json)
 
     include_cnv_calls = (cnv_statistics['Metrics_Passed'] == 'Fail').sum()
 
     with pd.ExcelWriter(out_file) as writer:
-        sv_calls.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
+        sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
         if include_cnv_calls == 0:
             cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
-        cnv_statistics.to_excel(write, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
+        cnv_statistics.to_excel(writer, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -618,7 +749,7 @@ def main():
     control_smap = args.control_smap
     input_json = args.input_json
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, input_json=input_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, input_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
