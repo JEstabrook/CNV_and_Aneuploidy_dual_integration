@@ -560,7 +560,27 @@ def process_json(input_json):
     cnv_map_value = {'Percent above expected (2 Mbp window)':20, 'Percent above expected (6 Mbp window)':20,'Correlation with label density':0.25,'Wave template correlation':0.4}
     cnv_statistics['Metrics_Passed'] = cnv_statistics['value'].apply(lambda x: 'Fail' if cnv_statistics.index[cnv_statistics['value'] == x][0] in cnv_map_value and float(x) > cnv_map_value[cnv_statistics.index[cnv_statistics['value'] == x][0]] else ('Pass' if cnv_statistics.index[cnv_statistics['value'] == x][0] in cnv_map_value else 'NA'))
     cnv_statistics.index.name='Metric'
-    return cnv_statistics
+    cnv_indx = ['Percent above expected (2 Mbp window)','Percent above expected (6 Mbp window)','Correlation with label density','Wave template correlation']
+    cnv_statistics_subset = cnv_statistics.loc[cnv_indx,:]
+    return cnv_statistics_subset
+
+def process_case_and_control_json(control_json, case_json, control_id, case_id):
+    """ Function aggregates control and case json and returns a merged frame
+
+    Args:
+        control_json (str): relative path to control json
+        case_json (str): relative path to case json
+        control_id (str): control id
+        case_id (str): case id
+    """
+    control_cnv = process_json(control_json)
+    control_cnv.columns = [control_id, 'description', 'metrics_passed_control']
+    case_cnv = process_json(case_json)
+    case_cnv.columns = [case_id, 'description', 'metrics_passed_case']
+    joined_cnv_calls = pd.concat([control_cnv.reindex([control_id,'metrics_passed_control'],axis=1),case_cnv.reindex([case_id,'metrics_passed_case'],axis=1)],axis=1)
+    include_cnv_calls = (joined_cnv_calls['metrics_passed_control'] == 'Fail').sum() + (joined_cnv_calls['metrics_passed_case'] == 'Fail').sum()
+    return joined_cnv_calls, include_cnv_calls
+
 
 def filter_duplicate_calls(sv_calls):
     """ Filters duplicate map calls made by RVP pipeline
@@ -583,7 +603,7 @@ def filter_duplicate_calls(sv_calls):
     return sv_final_calls
 
 
-def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, input_json, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
+def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id, celltype, control_smap, control_json, case_json, cnv_overlap_percentage=0.3, aneuploidy_overlap_percentage=0.5, cnv_window=1000, cnv_stitch_window=550000):
     """This function compares case and control Aneuploidy and CNV calls and reports case specific SV, CNV and Aneuploidy calls
 
     Args:
@@ -631,9 +651,8 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['Cell type'] = celltype
     cnv_calls, sv_calls = reorder_sheet(all_calls)
     sv_calls_filtered = filter_duplicate_calls(sv_calls)
-    cnv_statistics = process_json(input_json)
+    cnv_statistics, include_cnv_calls = process_case_and_control_json(control_json, case_json, control_id, case_id)
 
-    include_cnv_calls = (cnv_statistics['Metrics_Passed'] == 'Fail').sum()
 
     with pd.ExcelWriter(out_file) as writer:
         sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
@@ -650,7 +669,8 @@ def main():
     parser.add_argument('--control_aneuploidy', type=str, help="relative path to control *_Aneuploidy.txt")
     parser.add_argument('--control_cnv', type=str, help="relative path to control *_CNV.txt")
     parser.add_argument('--control_smap', type=str, help="relative path to control *_Annotated_SV.smap")
-    parser.add_argument('--input_json', type=str, help="relative path to control report.json containing CNV metrics")
+    parser.add_argument('--control_json', type=str, help="relative path to control report.json containing CNV metrics")
+    parser.add_argument('--case_json', type=str, help="relative path to control report.json containing CNV metrics")
     parser.add_argument('--out_file', type=str, help="output file handle")
     parser.add_argument('--case_id', type=str, help="Case ID")
     parser.add_argument('--control_id', type=str, help="Control ID")
@@ -679,9 +699,10 @@ def main():
     celltype = args.celltype
     cnv_stitch_window = args.cnv_stitch_window
     control_smap = args.control_smap
-    input_json = args.input_json
+    control_json = args.control_json
+    case_json = args.case_json
     
-    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, input_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
+    compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, control_json, case_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
 if __name__ == "__main__":
