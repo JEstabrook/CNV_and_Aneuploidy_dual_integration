@@ -574,11 +574,13 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
         case_id (str): case id
     """
     control_cnv = process_json(control_json)
-    control_cnv.columns = [control_id, 'description', 'metrics_passed_control']
+    control_cnv.columns = [control_id, 'description', 'Control QC Passed']
+    control_cnv[control_id] = control_cnv[control_id].astype(float)
     case_cnv = process_json(case_json)
-    case_cnv.columns = [case_id, 'description', 'metrics_passed_case']
-    joined_cnv_calls = pd.concat([control_cnv.reindex([control_id,'metrics_passed_control'],axis=1),case_cnv.reindex([case_id,'metrics_passed_case'],axis=1)],axis=1)
-    include_cnv_calls = (joined_cnv_calls['metrics_passed_control'] == 'Fail').sum() + (joined_cnv_calls['metrics_passed_case'] == 'Fail').sum()
+    case_cnv.columns = [case_id, 'description', 'Case QC Passed']
+    case_cnv[case_id] = case_cnv[case_id].astype(float)
+    joined_cnv_calls = pd.concat([case_cnv.reindex([case_id,'Case QC Passed'],axis=1),control_cnv.reindex([control_id,'Control QC Passed'],axis=1)],axis=1)
+    include_cnv_calls = (joined_cnv_calls['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls['Case QC Passed'] == 'Fail').sum()
     return joined_cnv_calls, include_cnv_calls
 
 
