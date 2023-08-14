@@ -1,0 +1,431 @@
+{
+  "job": {
+    "label": "Job Details",
+    "value": {
+      "jobpk": {
+        "label": "Job ID",
+        "value": "2,079,638",
+        "description": "Job Identifier",
+        "type": "integer"
+      },
+      "created_at": {
+        "label": "Created at",
+        "value": "2023-07-10T23:18:25.466Z",
+        "description": "Date job was created",
+        "type": "decimal"
+      },
+      "fullname": {
+        "label": "User Name",
+        "value": "Joey Estabrook",
+        "description": "Full name of user who launched job",
+        "type": "string"
+      },
+      "operationname": {
+        "label": "Job type",
+        "value": "Import Annotated Rare Variant Analysis",
+        "description": "The type of operation performed",
+        "type": "string"
+      },
+      "access": {
+        "label": "Access Version",
+        "value": "1.7.2",
+        "description": "Bionano Access Version",
+        "type": "string"
+      },
+      "solve": {
+        "label": "Solve Version",
+        "value": "Solve3.7_20221013_25",
+        "description": "Bionano Solve Version",
+        "type": "string"
+      },
+      "rescale": {
+        "label": "Compute On Demand Version",
+        "value": "Solve3.7_20221013_150614_25",
+        "description": "Version of pipeline for Compute On Demand",
+        "type": "string"
+      },
+      "objectalias": {
+        "label": "Job Name",
+        "value": "GM16736_RVP_baseline_1.5",
+        "description": "Alias for Job",
+        "type": "string"
+      },
+      "name": {
+        "label": "Project Name",
+        "value": "VertexPharmaceuticals_Amoasii_Dilutions",
+        "description": "Name of the project",
+        "type": "string"
+      },
+      "description": {
+        "label": "Project Description",
+        "value": "Samples are diluted with HG002 in order to achieve various VAF at coverage (400X, 800X, 1600X) in order to assess sensitivity",
+        "description": "Description of the project",
+        "type": "string"
+      },
+      "samplename": {
+        "label": "Sample Name",
+        "value": "GM16736",
+        "description": "Name of the sample",
+        "type": "string"
+      },
+      "sampleuid": {
+        "label": "Sample UID",
+        "value": "02617aa4-1f78-11ee-ba62-84160cc5b6b0",
+        "description": "System generated global unique identifier",
+        "type": "string"
+      },
+      "reference": {
+        "label": "Reference",
+        "value": "hg38_DLE1_0kb_0labels.cmap",
+        "description": "Name of the reference genome this sample was aligned to",
+        "type": "string"
+      }
+    },
+    "type": "section"
+  },
+  "Automatically determined noise parameters": {
+    "value": {
+      "PLV": {
+        "label": "Positive label variance (PLV)",
+        "value": "3.35 %",
+        "type": "decimal",
+        "units": "%",
+        "description": "Percentage of molecule labels absent in reference labels. "
+      },
+      "NLV": {
+        "label": "Negative label variance (NLV)",
+        "value": "7.44 %",
+        "type": "decimal",
+        "units": "%",
+        "description": "Percentage of reference labels absent in molecule labels"
+      },
+      "sf": {
+        "label": "Site SD",
+        "value": "0.091",
+        "type": "decimal",
+        "description": "Constant term in sizing error relative to reference"
+      },
+      "sd": {
+        "label": "sd",
+        "value": "0.011",
+        "type": "decimal",
+        "units": "",
+        "description": ""
+      },
+      "bpp": {
+        "label": "Base pairs per pixel",
+        "value": "488.96",
+        "type": "decimal",
+        "description": "Calculated base pairs per pixel in the alignment by comparing molecules to the reference."
+      },
+      "sr": {
+        "label": "Relative SD",
+        "value": "0.02",
+        "type": "decimal",
+        "description": "Quadratic term in sizing error relative to reference"
+      }
+    },
+    "label": "Automatically determined noise parameters",
+    "type": "section"
+  },
+  "Input Molecule Stats": {
+    "value": {
+      "nmol": {
+        "label": "Total number of molecules",
+        "value": "5,854,606",
+        "type": "integer",
+        "units": "",
+        "description": ""
+      },
+      "totlen": {
+        "label": "Total length",
+        "value": "1,500,000.18 Mbp",
+        "type": "decimal",
+        "units": "Mbp",
+        "description": "The summed length all molecules in the bnx file."
+      },
+      "avglen": {
+        "label": "Average length",
+        "value": "256.21 kbp",
+        "type": "decimal",
+        "units": "kbp",
+        "description": "The average (mean) length of the molecules."
+      },
+      "n50": {
+        "label": "Molecule N50",
+        "value": "261 kbp",
+        "type": "integer",
+        "units": "kbp",
+        "description": "N50 can be described as a weighted median statistic such that 50% of the summed molecule length is contained in molecules equal to or larger than this value"
+      },
+      "labdensity": {
+        "label": "Label density (/100kb)",
+        "value": "16.6",
+        "type": "decimal",
+        "units": "",
+        "description": "The average number of labels detected per 100 kbp of molecule length."
+      },
+      "medianlen": {
+        "label": "Median length",
+        "value": "225,750",
+        "type": "integer",
+        "units": "",
+        "description": "Median length of molecules."
+      }
+    },
+    "label": "Input Molecule Stats",
+    "type": "section"
+  },
+  "Molecules aligned to reference": {
+    "value": {
+      "mapn": {
+        "label": "Map name",
+        "value": "reference",
+        "type": "string",
+        "units": "",
+        "description": "Map molecules were aligned to"
+      },
+      "totmaplen": {
+        "label": "Total length",
+        "value": "1,150,888.99",
+        "type": "decimal",
+        "units": "",
+        "description": ""
+      },
+      "total_confidence": {
+        "label": "Total confidence",
+        "value": "178,608,645.94",
+        "type": "decimal",
+        "units": "",
+        "description": ""
+      },
+      "nalign": {
+        "label": "Total number of aligned molecules",
+        "value": "5,139,735",
+        "type": "integer",
+        "units": "",
+        "description": ""
+      },
+      "reflen": {
+        "label": "Reference length",
+        "value": "3,088.27 Mb",
+        "type": "decimal",
+        "units": "Mb",
+        "description": ""
+      },
+      "align_frac": {
+        "label": "Fraction of aligned molecules ",
+        "value": "0.92",
+        "type": "decimal",
+        "units": "",
+        "description": "Fraction of aligned molecules  "
+      },
+      "totmapqrylen": {
+        "label": "Total mapped reference length",
+        "value": "1,143,667.11 kb",
+        "type": "decimal",
+        "units": "kb",
+        "description": "Sum of lengths of mapped portions of all molecules, on reference"
+      },
+      "totqrylen": {
+        "label": "Total mapped query length",
+        "value": "1,305,234.78 kb",
+        "type": "decimal",
+        "units": "kb",
+        "description": "Sum of lengths of mapped portions of all molecules, on query"
+      },
+      "effect_cov": {
+        "label": "Effective coverage of reference",
+        "value": "372.66",
+        "type": "decimal",
+        "units": "",
+        "description": ""
+      },
+      "avgfp": {
+        "label": "Average FP",
+        "value": "2",
+        "type": "integer",
+        "units": "",
+        "description": "Average number false positive labels"
+      },
+      "avgfn": {
+        "label": "Average FN",
+        "value": "0.1",
+        "type": "decimal",
+        "units": "",
+        "description": "Average number false negative labels"
+      },
+      "avgbpp": {
+        "label": "Average bpp",
+        "value": "489.21",
+        "type": "decimal",
+        "units": "",
+        "description": "Average Base pairs per pixel"
+      },
+      "avg_nlv": {
+        "label": "Average NLV",
+        "value": "10.5",
+        "type": "decimal",
+        "units": "",
+        "description": "Average Negative label variance (NLV)"
+      },
+      "avg_plv": {
+        "label": "Average PLV",
+        "value": "4.82",
+        "type": "decimal",
+        "units": "",
+        "description": "Average Positive label variance (PLV)"
+      },
+      "avg_sd": {
+        "label": "Average SD",
+        "value": "0.021",
+        "type": "decimal",
+        "units": "",
+        "description": "Average sizing error"
+      },
+      "avg_sf": {
+        "label": "Average site SD",
+        "value": "0.1",
+        "type": "decimal",
+        "units": "",
+        "description": "Constant term in sizing error relative to reference"
+      },
+      "avg_sr": {
+        "label": "Average relative SD",
+        "value": "0.021",
+        "type": "decimal",
+        "units": "",
+        "description": "Average quadratic term in sizing error relative to reference"
+      },
+      "ave_confidence": {
+        "label": "Average confidence",
+        "value": "34.75",
+        "type": "decimal",
+        "units": "",
+        "description": "The average alignment score for all the molecules that align to the reference"
+      },
+      "frac_aligned_len": {
+        "label": "Fraction aligned length",
+        "value": "0.88",
+        "type": "decimal",
+        "units": "",
+        "description": "Length of fraction of aligned molecules"
+      }
+    },
+    "label": "Molecules aligned to reference",
+    "type": "section"
+  },
+  "Final SV summary": {
+    "value": {
+      "Deletions": {
+        "label": "Deletions",
+        "value": "683",
+        "type": "integer",
+        "units": "",
+        "description": "The number of segments in the genome map assembly which are shorter when compared to the reference, indicating that a deletion occurred in the segment."
+      },
+      "Insertions": {
+        "label": "Insertions",
+        "value": "700",
+        "type": "integer",
+        "units": "",
+        "description": "The number of segments in the genome map assembly which are longer when compared to the reference, indicating that an insertion occurred in the segment."
+      },
+      "Duplications": {
+        "label": "Duplications",
+        "value": "214",
+        "type": "integer",
+        "units": "",
+        "description": "The number of nonredundant segmental tandem and tandem-inverted duplication patterns found in the genome map assembly compared to the reference."
+      },
+      "Inversion breakpoints": {
+        "label": "Inversion breakpoints",
+        "value": "252",
+        "type": "integer",
+        "units": "",
+        "description": "The number of inversion breakpoints found in the genome map assembly compared to the reference based on the observation that patterns are in opposite orientation compared to adjacent sequence patterns."
+      },
+      "Interchr. translocation breakpoints": {
+        "label": "Interchr. translocation breakpoints",
+        "value": "6",
+        "type": "integer",
+        "units": "",
+        "description": "The number of nonredundant interchromosomal translocation breakpoints resulting in fusion between different chromosomes in the genome map assembly compared to the reference."
+      },
+      "Intrachr. translocation breakpoints": {
+        "label": "Intrachr. fusion breakpoints",
+        "value": "2",
+        "type": "integer",
+        "units": "",
+        "description": "The number of translocation breakpoints within a chromosome in the genome map assembly compared to the reference"
+      }
+    },
+    "label": "Final SV summary",
+    "type": "section"
+  },
+  "CNV Statistics": {
+    "label": "CNV Statistics",
+    "value": {
+      "Version": {
+        "label": "Version",
+        "value": "3ba3c0ad741221ae39d5203b0fc304f2cc1dd599; installed on 2021-10-11 23:53:37",
+        "type": "string"
+      },
+      "Sex": {
+        "label": "Sex",
+        "value": "male",
+        "type": "string",
+        "description": "Sex determined based on coverage of sex chromosomes"
+      },
+      "Median Coverage": {
+        "label": "Median Coverage",
+        "value": "433",
+        "type": "string",
+        "description": "Median number of molecules covering each position genome-wide"
+      },
+      "Global coefficient of variation": {
+        "label": "Global coefficient of variation",
+        "value": "0.089",
+        "type": "string",
+        "description": "Coefficient of variation in coverage genome-wide"
+      },
+      "Median local coefficient of variation (2Mbp)": {
+        "label": "Median local coefficient of variation (2Mbp)",
+        "value": "0.055",
+        "type": "string",
+        "description": "Median coefficient of variation observed within 2Mbp intervals"
+      },
+      "Percent above expected (2 Mbp window)": {
+        "label": "Percent above expected (2 Mbp window)",
+        "value": "10.45",
+        "type": "string",
+        "description": "Percent difference between the expected coefficient of variation in sample with low systematic biases (2 Mbp windows) and the observed coefficient of variation in the sample. If the observed percent different is greater than 20%, the sample should be considered to contain systematic bias."
+      },
+      "Median local coefficient of variation (6Mbp)": {
+        "label": "Median local coefficient of variation (6Mbp)",
+        "value": "0.067",
+        "type": "string",
+        "description": "Median coefficient of variation observed within 6Mbp intervals"
+      },
+      "Percent above expected (6 Mbp window)": {
+        "label": "Percent above expected (6 Mbp window)",
+        "value": "34.29",
+        "type": "string",
+        "description": "Percent difference between the expected coefficient of variation in sample with low systematic biases (6 Mbp windows) and the observed coefficient of variation in the sample. If the observed percent different is greater than 20%, the sample should be considered to contain systematic bias."
+      },
+      "Correlation with label density": {
+        "label": "Correlation with label density",
+        "value": "-0.11",
+        "type": "string",
+        "description": "Correlation between coverage of genomic regions and the label density in the given regions. Value greater than 0.25 indicates high systematic biases and sample may have more false positive CNV calls."
+      },
+      "Wave template correlation": {
+        "label": "Wave template correlation",
+        "value": "0",
+        "type": "string",
+        "description": "Correlation between the coverage of the query sample and the coverage profiles from known samples with large systematic bias. Value greater than 0.4 indicates high systematic biases and sample may have more false positive CNV calls."
+      }
+    },
+    "type": "section"
+  }
+}
