@@ -686,7 +686,6 @@ def main():
 
     # parse command line arguments
     args = parser.parse_args()
-    print(args)
     dual_aneuploidy = args.dual_aneuploidy
     dual_smap = args.dual_smap
     dual_cnv = args.dual_cnv
