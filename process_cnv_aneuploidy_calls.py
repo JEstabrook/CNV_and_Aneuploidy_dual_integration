@@ -639,6 +639,8 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
     case_cnv[case_id] = case_cnv[case_id].astype(float)
     joined_cnv_calls = pd.concat([case_cnv.reindex([case_id,'Case QC Passed'],axis=1),control_cnv.reindex([control_id,'Control QC Passed'],axis=1)],axis=1)
     include_cnv_calls = (joined_cnv_calls['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls['Case QC Passed'] == 'Fail').sum()
+    joined_cnv_calls.index = ['Percent difference (2 Mbp window)', 'Percent difference (2 Mbp window)', 'Correlation with label density', 'Wave template correlation']
+    joined_cnv_calls.index.name = 'Metric'
     return joined_cnv_calls, include_cnv_calls
 
 
