@@ -8,6 +8,10 @@ import docx
 import sys
 import functools
 import inspect
+from datetime import datetime
+import warnings
+
+warnings.simplefilter(action='ignore', category=DeprecationWarning)
 
 class PrintLogger:
     def __init__(self, log_file):
@@ -64,10 +68,10 @@ def read_smap(file_path):
         header = lines[start_index].strip()  # Store the header line
         data = lines[start_index + 2:]  # Skip the header line and the following line
         df = pd.DataFrame([line.strip().strip().split('\t') for line in data],columns=header.split()[1:])  # Set column names excluding the '#h' prefix
-        print(f"smap DataFrame shape: {df.shape[0]} rows x {df.shape[1]} columns\n")
+        print(f"smap DataFrame shape : {df.shape[0]} rows x {df.shape[1]} columns")
         return df
     else:
-        print('Unable to parse smap!\n')
+        print('Unable to parse smap!')
         return None  # Return None if no header line is found
 
 def read_aneuploidy(file_path):
@@ -90,7 +94,7 @@ def read_aneuploidy(file_path):
         header = lines[start_index].strip()  # Store the header line
         data = lines[start_index + 1:]  # Skip only the header line
         df = pd.DataFrame([line.strip().split() for line in data],columns=header.split()).rename(columns={'#chr':'chr'}) # Set column names
-        print(f"Aneuploidy DataFrame shape: {df.shape[0]} rows x {df.shape[1]} columns\n")
+        print(f"Aneuploidy DataFrame shape : {df.shape[0]} rows x {df.shape[1]} columns\n")
         return df
     else:
         print('Unable to parse Aneuploidy file!\n')
@@ -118,10 +122,10 @@ def read_cnv(file_path):
         df = pd.DataFrame([line.strip().split() for line in data],columns=header.split()).rename(columns={'#Id':'Id','Chromosome':'chr'}) # Set column names
         df['Start'] = df['Start'].astype(int)
         df['End'] = df['End'].astype(int)
-        print(f"CNV DataFrame shape: {df.shape[0]} rows x {df.shape[1]} columns\n")
+        print(f"CNV DataFrame shape : {df.shape[0]} rows x {df.shape[1]} columns")
         return df
     else:
-        print('Unable to parse CNV file!\n')
+        print('Unable to parse CNV file!')
         return None 
 
 def calc_difference(cnv):
@@ -136,7 +140,6 @@ def calc_difference(cnv):
     vals = (cnv['Start'] - cnv['End'].shift(1)).fillna(cnv.groupby(['chr', 'Type'])['Start'].transform('first'))
     return vals
 
-@print_parameters_on_call
 def stitching(cnv, cnv_stitch_window=550000, width=True):
     """Stitchs CNV calls within a particular window bin together
 
@@ -148,7 +151,7 @@ def stitching(cnv, cnv_stitch_window=550000, width=True):
     Returns:
         pd.DataFrame: CNV stitched calls
     """
-    print(f"Stiching CNV DataFrame shape: {cnv.shape[0]} rows x {cnv.shape[1]} columns\n")
+    print(f"Stiching CNV DataFrame shape: {cnv.shape[0]} rows x {cnv.shape[1]} columns")
     cnv = cnv.sort_values(by=['chr', 'Type', 'Start'])
     if cnv.shape[0] == 0:
         stitched_frame = cnv
@@ -165,7 +168,6 @@ def stitching(cnv, cnv_stitch_window=550000, width=True):
     return stitched_frame
 
 
-@print_parameters_on_call
 def collapse_rows(df, cnv_stitch_window):
     """Collapses rows in a DataFrame based on a condition
     Args:
@@ -174,7 +176,7 @@ def collapse_rows(df, cnv_stitch_window):
     Returns:
         pd.DataFrame: Collapsed DataFrame
     """
-    print(f'Collapsing CNV calls using cnv stitch window: {cnv_stitch_window}')
+    print(f'Collapsing CNV calls using cnv stitch window : {cnv_stitch_window} (bp)')
     collapsed_data = []
     current_start = None
     current_end = None
@@ -216,7 +218,6 @@ def calculate_overlap_percentage(xlist,ylist):
     length = max1-min1 + max2-min2
     return 2*overlap/length
 
-@print_parameters_on_call
 def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
     """
     Calculates the overlap percentage of two sets of values for every row relative to the first row.
@@ -230,7 +231,6 @@ def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
     Returns:
     df_filtered -- Filtered DataFrame.
     """
-    print(f'Calculating overlap percentage of case and control calls\n\t threshold: {threshold}\n\t size_threshold: {size_threshold}')
     df = df.sort_values(['Found in Control','Case Molecule Count'],ascending=[False,False])
     df.reset_index(inplace=True,drop=True)
     overlap_percentages = []
@@ -260,7 +260,6 @@ def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
     else:
         return df[(df.index == 0) | (df['Overlap Percentage'] <= threshold) | (df['Size Ratio'] >= size_threshold)]
 
-@print_parameters_on_call
 def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Performs pairwise comparison between case and control DataFrames
     Args:
@@ -281,9 +280,13 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
     case_overlap = []
     case_checked = []
     control_checked = []
+    print('\n--- Processing Case & Control CNV calls ---\n')
     for chr_name, case_group in grouped_case:
         if chr_name in grouped_control.groups:
             control_group = grouped_control.get_group(chr_name)
+            print(f'Processing Chromosome : {chr_name}')
+            print(f'\tNumber of Control events : {control_group.shape[0]}')
+            print(f'\tNumber of Case events : {case_group.shape[0]}')
             for _, case_row in case_group.iterrows():
                 case_specific = case_row.copy().to_frame().T
                 case_specific.columns = case_specific.columns + '_Case'
@@ -327,7 +330,6 @@ def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=10
         case_overlap_frame = pd.DataFrame(columns=['Id_Case', 'chr_Case', 'Start_Case', 'End_Case', 'Width_Case', 'Type_Case', 'fractionalCopyNumber_Case', 'CopyNumber_Case', 'AlleleFreq_Case', 'Mask_overlap_fract_Case', 'diff_Case', 'unique_id_Case', 'Id_Control', 'chr_Control', 'Start_Control', 'End_Control', 'Width_Control', 'Type_Control', 'fractionalCopyNumber_Control', 'CopyNumber_Control', 'AlleleFreq_Control', 'Mask_overlap_fract_Control', 'diff_Control', 'unique_id_Control'])
     return filtered_case, case_overlap_frame
 
-@print_parameters_on_call
 def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
     """Compares case and control DataFrames and returns rows unique to case based on specified conditions
     
@@ -339,14 +341,13 @@ def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
     Returns:
         pd.DataFrame: Rows unique to case DataFrame
     """
-    print('Comparing Aneuploidy data')
     case['fractChrLen'] = case['fractChrLen'].astype(float)
     control['fractChrLen'] = control['fractChrLen'].astype(float)
     case['fractCN'] = case['fractCN'].astype(float)
     control['fractCN'] = control['fractCN'].astype(float)
     merged = case.merge(control, on=['chr', 'types'], suffixes=('_case', '_control'), how='left')
     merged['Found_in_control_sample_assembly'] = np.nan
-    print(f'Number of calls to compare: {merged.shape[0]}')
+    print(f'Number of Aneuploidy calls to compare : {merged.shape[0]}')
     filtered_rows = []
     merged_rows = []
     for _, row in merged.iterrows():
@@ -367,7 +368,6 @@ def compare_aneuploidy_data(case, control, aneuploidy_overlap_percentage):
     filtered_case.columns = case.columns[:5]
     return filtered_case, merged_case
 
-@print_parameters_on_call
 def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Processes CNV calls and reports unique and paired case & control CNV calls
     Args:
@@ -394,7 +394,6 @@ def process_cnvs(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     joined_cnv_comp = pd.concat([cnv_comp_table_indexed, unique_case_to_merge])
     return unique_case_cnvs_subset, joined_cnv_comp
 
-@print_parameters_on_call
 def process_aneuploidies(case, control, aneuploidy_overlap_percentage):
     """Processes Aneuploidy calls and reports unique and paired case & control Aneuploidy calls
     
@@ -516,7 +515,6 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
         smap_subset (pd.DataFrame): _description_
         control_smap_frame (pd.DataFrame): _description_
     """
-    print('Associating SV case and control calls')
     ins_del_position_overlap = 10000
     ins_del_size_percent_similarity = 50
     inversion_position_overlap = 50000
@@ -533,10 +531,11 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
     control_smap_frame['RefStartPos'] = control_smap_frame['RefStartPos'].astype(float)
     control_smap_frame['RefEndPos'] = control_smap_frame['RefEndPos'].astype(float)
     smap_subset_updated = smap_subset.copy()
+    print('\n--- Intersecting SV Case & Control calls ---\n')
     grouped_calls = smap_subset.groupby(['Event Type','ChrA location'])
     for (event_type, chr1), smap_subset_frame in grouped_calls:
-        print(f'Processing event_type: {event_type} found on chromosome: {chr1}')
-        print(f'Number of events: {smap_subset_frame.shape[0]}')
+        print(f'Processing SVType : {event_type}\n\tChromosome : {chr1}')
+        print(f'\tNumber of events : {smap_subset_frame.shape[0]}\n')
         control_subset = control_smap_frame[(control_smap_frame['Type'] == event_type) & (control_smap_frame['RefcontigID1'] == chr1)]
         if (event_type == 'insertion') or (event_type == 'deletion'):
             for _, row in smap_subset_frame.iterrows():
@@ -649,8 +648,8 @@ def filter_duplicate_calls(sv_calls):
     Args:
         sv_calls (pd.DataFrame): Frame returned from reorder_sheet()
     """
-    print('Filtering duplicate SV calls')
-    print(f'Input svcalls: {sv_calls.shape[0]}')
+    print('\n--- Filtering duplicate SV calls ---')
+    print(f'Input SV calls : {sv_calls.shape[0]}')
     sv_calls.reset_index(inplace=True,drop=True)
     sv_calls['Case Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
     sv_calls['Control Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
@@ -664,8 +663,8 @@ def filter_duplicate_calls(sv_calls):
             subset_frame = calculate_overlap_percentage_by_row(subset_frame).iloc[:,:-2]
             final_calls.append(subset_frame)
     sv_final_calls = pd.concat(final_calls)
-    print(f'Final svcalls: {sv_final_calls.shape[0]}')
-    print(f'Filtered {sv_calls.shape[0] - sv_final_calls.shape[0]} duplicate calls')
+    print(f'Final SV calls : {sv_final_calls.shape[0]}')
+    print(f'Filtered duplicate calls : {sv_calls.shape[0] - sv_final_calls.shape[0]}')
     return sv_final_calls
 
 def generate_docx(frame, file_handle):
@@ -734,21 +733,29 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         cnv_window (int): base pair window to extend start and stop positions by for CNV calls
         cnv_stitch_window (int): base pair window used to extend and join neighboring cnvs that fall within n-basepairs from one another. Defaults to 550000.
     """
-    print('Parsing dual annotation smap: {}\n'.format(dual_smap))
+    print('\n--- Processing smap files ---')
+    print('Parsing dual annotation smap : {}'.format(dual_smap))
     dual_smap_frame = read_smap(dual_smap)
 
-    print('Parsing control smap: {}\n'.format(control_smap))
+    print('\nParsing control smap : {}'.format(control_smap))
     control_smap_frame = read_smap(control_smap)
 
+    print('\n--- Processing Case Aneuploidy data ---')
     dual_aneuploidy_frame = read_aneuploidy(dual_aneuploidy)
+
+    print('--- Processing Case CNV data ---')
     dual_cnv_frame = read_cnv(dual_cnv)
     stitched_dual_cnvs = stitching(dual_cnv_frame, cnv_stitch_window=cnv_stitch_window)
 
+    print('\n--- Processing Control Aneuploidy data ---')
     control_aneuploidy_frame = read_aneuploidy(control_aneuploidy)
+
+    print('--- Processing Control CNV data ---')
     control_cnv_frame = read_cnv(control_cnv)
     stitched_control_cnvs = stitching(control_cnv_frame, cnv_stitch_window=cnv_stitch_window)
 
     unique_case_cnvs_subset, cnv_comp_table_indexed = process_cnvs(case=stitched_dual_cnvs, control=stitched_control_cnvs, cnv_overlap_percentage=cnv_overlap_percentage, cnv_window=cnv_window)
+    print('\n--- Intersecting Aneuploidy calls ---')
     unique_case_aneu_subset, aneu_comp_table_indexed = process_aneuploidies(case=dual_aneuploidy_frame, control=control_aneuploidy_frame, aneuploidy_overlap_percentage=aneuploidy_overlap_percentage)
 
     smap_filtered, smap_subset = process_smap(dual_smap_frame)
@@ -802,8 +809,6 @@ def main():
     parser.add_argument('--cnv_window', type=int, nargs='?', const=1, default=1000, help="bp window buffer at start and end of CNV calls")
     parser.add_argument('--cnv_stitch_window', type=int, nargs='?', const=1, default=550000, help="bp window to merge neighboring CNV calls")
 
-
-
     # parse command line arguments
     args = parser.parse_args()
     dual_aneuploidy = args.dual_aneuploidy
@@ -825,6 +830,8 @@ def main():
     
     log_file_handle = "{case}_vs_{control}.log".format(case=case_id,control=control_id)
     with PrintLogger(log_file_handle):
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Processed Dual VAP results : {timestamp}\n")
         compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, control_json, case_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
