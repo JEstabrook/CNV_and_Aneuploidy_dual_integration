@@ -152,6 +152,7 @@ def stitching(cnv, cnv_stitch_window=550000, width=True):
         pd.DataFrame: CNV stitched calls
     """
     print(f"Stiching CNV DataFrame shape: {cnv.shape[0]} rows x {cnv.shape[1]} columns")
+    print(f'Collapsing CNV calls using cnv stitch window : {cnv_stitch_window} (bp)')
     cnv = cnv.sort_values(by=['chr', 'Type', 'Start'])
     if cnv.shape[0] == 0:
         stitched_frame = cnv
@@ -176,7 +177,6 @@ def collapse_rows(df, cnv_stitch_window):
     Returns:
         pd.DataFrame: Collapsed DataFrame
     """
-    print(f'Collapsing CNV calls using cnv stitch window : {cnv_stitch_window} (bp)')
     collapsed_data = []
     current_start = None
     current_end = None
@@ -827,8 +827,11 @@ def main():
     control_smap = args.control_smap
     control_json = args.control_json
     case_json = args.case_json
-    
-    log_file_handle = "{case}_vs_{control}.log".format(case=case_id,control=control_id)
+    file_handle = extract_path_from_handle(out_file)
+    log_file_handle = os.path.join(file_handle,"{case}_vs_{control}.log".format(case=case_id,control=control_id))
+    if os.path.exists(log_file_handle):
+        os.remove(log_file_handle)
+        print("Previous log file deleted.")
     with PrintLogger(log_file_handle):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"Processed Dual VAP results : {timestamp}\n")
