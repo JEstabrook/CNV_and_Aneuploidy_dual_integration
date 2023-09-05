@@ -1,0 +1,13 @@
+Cell Type,Case Sample Name,Control Sample Name,Event Type,Case Start Chromosome,Case End Chromosome,Case Event Start,Case Event End,Case Event Size,Case Molecule Count,Control Molecule Count,Found in Control
+HCM,GM16736,HG002,deletion,4,4,137174039,137279172,96480,0,0,no
+HCM,GM16736,HG002,deletion,6,6,21814479,21837075,8595,0,0,no
+HCM,GM16736,HG002,deletion,7,7,18905435,18944825,37054,0,0,no
+HCM,GM16736,HG002,duplication_split,14,14,57465816,57672657,206841,0,0,no
+HCM,GM16736,HG002,insertion,1,1,32697887,32727006,21603,0,0,no
+HCM,GM16736,HG002,insertion,12,12,117928990,117940785,5762,90,90,yes
+HCM,GM16736,HG002,insertion,16,16,84587488,84636140,114960,20,20,yes
+HCM,GM16736,HG002,insertion,6,6,29947958,29950614,5894,0,0,no
+HCM,GM16736,HG002,translocation_interchr,2,10,56528076,62166879,NA,0,0,no
+HCM,GM16736,HG002,translocation_interchr,7,10,64820262,57454464,NA,171,171,yes
+HCM,GM16736,HG002,translocation_interchr,7,20,143712074,10032710,NA,90,90,yes
+HCM,GM16736,HG002,translocation_interchr,9,22,21976950,20318054,NA,0,0,no
