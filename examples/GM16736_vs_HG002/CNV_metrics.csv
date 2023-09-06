@@ -1,5 +1,5 @@
 Metric,GM16736,Case QC Passed,HG002,Control QC Passed
-Percent difference (2 Mbp window),4.728,Pass,4.728,Pass
-Percent difference (2 Mbp window),12.245,Pass,12.245,Pass
+Percent difference between observed and expected coefficient of variation (2 Mbp window),4.728,Pass,4.728,Pass
+Percent difference between observed and expected coefficient of variation (6 Mbp window),12.245,Pass,12.245,Pass
 Correlation with label density,0.070,Pass,0.070,Pass
 Wave template correlation,0.000,Pass,0.000,Pass
