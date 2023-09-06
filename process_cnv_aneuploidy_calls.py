@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import json
 import docx
+from docx.shared import Pt
 import sys
 import functools
 import inspect
@@ -638,8 +639,12 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
     case_cnv[case_id] = case_cnv[case_id].astype(float)
     joined_cnv_calls = pd.concat([case_cnv.reindex([case_id,'Case QC Passed'],axis=1),control_cnv.reindex([control_id,'Control QC Passed'],axis=1)],axis=1)
     include_cnv_calls = (joined_cnv_calls['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls['Case QC Passed'] == 'Fail').sum()
-    joined_cnv_calls.index = ['Percent difference (2 Mbp window)', 'Percent difference (2 Mbp window)', 'Correlation with label density', 'Wave template correlation']
+    joined_cnv_calls.index = ['Percent difference between observed and expected coefficient of variation (2 Mbp window)', 'Percent difference between observed and expected coefficient of variation (6 Mbp window)', 'Correlation with label density', 'Wave template correlation']
     joined_cnv_calls.index.name = 'Metric'
+    if include_cnv_calls == 0:
+        print(f"\nCNV criteria passed for both Case and Control samples\n")
+    else:
+        print(f"\nCNV criteria failed.\n\tCase contains [{(joined_cnv_calls['Case QC Passed'] == 'Fail').sum()}] failed metrics\n\tControl contains [{(joined_cnv_calls['Control QC Passed'] == 'Fail').sum()}] failed metrics")
     return joined_cnv_calls, include_cnv_calls
 
 
@@ -677,13 +682,27 @@ def generate_docx(frame, file_handle):
     doc = docx.Document()
     t = doc.add_table(rows=frame.shape[0] + 1, cols=frame.shape[1])
     t.style = 'TableGrid'
+
+    # Set up the desired font and alignment
+    font_name = "Times New Roman"
+    center_alignment = docx.enum.text.WD_PARAGRAPH_ALIGNMENT.CENTER
+
     # Add the column headings
     for j in range(frame.shape[1]):
-        t.cell(0, j).text = frame.columns[j]
+        cell = t.cell(0, j)
+        cell.paragraphs[0].clear()  # Clear the paragraph
+        run = cell.paragraphs[0].add_run(frame.columns[j])  # Add a new run with the header text
+        cell.paragraphs[0].alignment = center_alignment
+        run.font.name = font_name
+        run.font.size = Pt(12)
     for i in range(frame.shape[0]):
         for j in range(frame.shape[1]):
-            cell = frame.iat[i, j]
-            t.cell(i+ 1, j).text = str(cell)
+            cell = t.cell(i + 1, j)
+            cell.text = str(frame.iat[i, j])
+            cell.paragraphs[0].alignment = center_alignment
+            for run in cell.paragraphs[0].runs:
+                run.font.name = font_name
+                run.font.size = Pt(12)
     doc.save('{}.docx'.format(file_handle))
 
 def center_excel_cells(writer):
@@ -777,15 +796,25 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
 
     with pd.ExcelWriter(out_file) as writer:
         file_handle = extract_path_from_handle(out_file)
+        print(f"\nWriting SV calls to results excel file: {out_file}")
         sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
+        print(f"Writing SV calls to csv file: {os.path.join(file_handle,'SV_calls.csv')}")
         sv_calls_filtered.to_csv(os.path.join(file_handle,'SV_calls.csv'),index=False,float_format="%.3f", na_rep='NA')
+        print(f"Writing SV calls to docx file: {os.path.join(file_handle,'SV_calls.docx')}")
         generate_docx(sv_calls_filtered, os.path.join(file_handle,'SV_calls'))
         if include_cnv_calls == 0:
+            print(f"Writing CNV calls to results excel file: {out_file}")
             cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
+            print(f"Writing CNV calls to csv file: {os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv')}")
             cnv_calls.to_csv(os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv'),index=False,float_format="%.3f", na_rep='NA')
+            print(f"Writing CNV calls to docx file: {os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.docx')}")
             generate_docx(cnv_calls, os.path.join(file_handle,'CNV_and_Aneuploidy_calls'))
+        print(f"Writing CNV statistics to results excel file: {out_file}")
         cnv_statistics.to_excel(writer, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
+        print(f"Writing CNV statistics to csv file: {out_file}")
         cnv_statistics.to_csv(os.path.join(file_handle,'CNV_metrics.csv'),float_format="%.3f", na_rep='NA')
+        cnv_statistics.reset_index(inplace=True)
+        print(f"Writing CNV statistics to docx file: {os.path.join(file_handle,'CNV_metrics.docx')}")
         generate_docx(cnv_statistics, os.path.join(file_handle,'CNV_metrics'))
         center_excel_cells(writer)
 
@@ -829,12 +858,18 @@ def main():
     case_json = args.case_json
     file_handle = extract_path_from_handle(out_file)
     log_file_handle = os.path.join(file_handle,"{case}_vs_{control}.log".format(case=case_id,control=control_id))
+    with open(control_json) as json_file:
+        data = json.load(json_file)
+    access_dict = data['job']['value']['access']
+    solve_dict = data['job']['value']['rescale']
     if os.path.exists(log_file_handle):
         os.remove(log_file_handle)
         print("Previous log file deleted.")
     with PrintLogger(log_file_handle):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"Processed Dual VAP results : {timestamp}\n")
+        print(f"{access_dict['description']} : {access_dict['value']}")
+        print(f"{solve_dict['description']} : {solve_dict['value']}\n")
         compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, control_cnv, out_file, case_id, control_id,celltype, control_smap, control_json, case_json, cnv_overlap_percentage, aneuploidy_overlap_percentage, cnv_window, cnv_stitch_window)
 
 
