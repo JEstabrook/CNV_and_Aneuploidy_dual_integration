@@ -682,8 +682,8 @@ def format_rounded(number, decimals=3):
     Returns:
         str: The formatted string representation of the number.
     """
-    if pd.isna(number):  # Handle NaN values
-        return number
+    if pd.isna(number) or np.isnan(number):  # Handle NaN values
+        return ''
     return f"{round(number, decimals):.{decimals}f}"
 
 def write_dataframe_to_csv(df, filename, decimals=3):
@@ -849,8 +849,8 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         print(f"Writing CNV statistics to results excel file: {out_file}")
         cnv_statistics.to_excel(writer, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
         print(f"Writing CNV statistics to csv file: {os.path.join(file_handle,'CNV_metrics.csv')}")
-        write_dataframe_to_csv(df=cnv_statistics, filename=os.path.join(file_handle,'CNV_metrics.csv'))
         cnv_statistics.reset_index(inplace=True)
+        write_dataframe_to_csv(df=cnv_statistics, filename=os.path.join(file_handle,'CNV_metrics.csv'))
         print(f"Writing CNV statistics to docx file: {os.path.join(file_handle,'CNV_metrics.docx')}")
         generate_docx(cnv_statistics, os.path.join(file_handle,'CNV_metrics'))
         center_excel_cells(writer)
