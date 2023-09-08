@@ -672,6 +672,37 @@ def filter_duplicate_calls(sv_calls):
     print(f'Filtered duplicate calls : {sv_calls.shape[0] - sv_final_calls.shape[0]}')
     return sv_final_calls
 
+def format_rounded(number, decimals=3):
+    """Formats a number to a fixed number of decimals, retaining trailing zeros.
+
+    Args:
+        number (float|int): The number to be formatted.
+        decimals (int, optional): The number of decimals to format to. Defaults to 3.
+
+    Returns:
+        str: The formatted string representation of the number.
+    """
+    if pd.isna(number):  # Handle NaN values
+        return number
+    return f"{round(number, decimals):.{decimals}f}"
+
+def write_dataframe_to_csv(df, filename, decimals=3):
+    """Writes a DataFrame to a CSV file after transforming numeric columns 
+    to strings with a fixed number of trailing zeros.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to be written to CSV.
+        filename (str): The name (or path) of the output CSV file.
+        decimals (int, optional): The number of decimals to format to. Defaults to 3.
+    """
+    
+    # Transform numeric columns to strings with trailing zeros
+    for col in df.select_dtypes(include=['float64', 'int64']).columns:
+        df[col] = df[col].apply(lambda x: format_rounded(x, decimals=decimals))
+    
+    # Write to CSV
+    df.to_csv(filename, index=False, na_rep='NA')
+
 def generate_docx(frame, file_handle):
     """ This function 
 
@@ -697,8 +728,14 @@ def generate_docx(frame, file_handle):
         run.font.size = Pt(12)
     for i in range(frame.shape[0]):
         for j in range(frame.shape[1]):
+            value = frame.iat[i, j]
+            # Format the value if it's a float
+            if isinstance(value, (float, int)):
+                formatted_value = format_rounded(value)
+            else:
+                formatted_value = str(value)
             cell = t.cell(i + 1, j)
-            cell.text = str(frame.iat[i, j])
+            cell.text = formatted_value
             cell.paragraphs[0].alignment = center_alignment
             for run in cell.paragraphs[0].runs:
                 run.font.name = font_name
@@ -799,20 +836,20 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         print(f"\nWriting SV calls to results excel file: {out_file}")
         sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
         print(f"Writing SV calls to csv file: {os.path.join(file_handle,'SV_calls.csv')}")
-        sv_calls_filtered.to_csv(os.path.join(file_handle,'SV_calls.csv'),index=False,float_format="%.3f", na_rep='NA')
+        write_dataframe_to_csv(df=sv_calls_filtered, filename=os.path.join(file_handle,'SV_calls.csv'))
         print(f"Writing SV calls to docx file: {os.path.join(file_handle,'SV_calls.docx')}")
         generate_docx(sv_calls_filtered, os.path.join(file_handle,'SV_calls'))
         if include_cnv_calls == 0:
             print(f"Writing CNV calls to results excel file: {out_file}")
             cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
             print(f"Writing CNV calls to csv file: {os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv')}")
-            cnv_calls.to_csv(os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv'),index=False,float_format="%.3f", na_rep='NA')
+            write_dataframe_to_csv(df=cnv_calls, filename=os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv'))
             print(f"Writing CNV calls to docx file: {os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.docx')}")
             generate_docx(cnv_calls, os.path.join(file_handle,'CNV_and_Aneuploidy_calls'))
         print(f"Writing CNV statistics to results excel file: {out_file}")
         cnv_statistics.to_excel(writer, sheet_name='CNV_metrics',float_format="%.3f", na_rep='NA')
-        print(f"Writing CNV statistics to csv file: {out_file}")
-        cnv_statistics.to_csv(os.path.join(file_handle,'CNV_metrics.csv'),float_format="%.3f", na_rep='NA')
+        print(f"Writing CNV statistics to csv file: {os.path.join(file_handle,'CNV_metrics.csv')}")
+        write_dataframe_to_csv(df=cnv_statistics, filename=os.path.join(file_handle,'CNV_metrics.csv'))
         cnv_statistics.reset_index(inplace=True)
         print(f"Writing CNV statistics to docx file: {os.path.join(file_handle,'CNV_metrics.docx')}")
         generate_docx(cnv_statistics, os.path.join(file_handle,'CNV_metrics'))
