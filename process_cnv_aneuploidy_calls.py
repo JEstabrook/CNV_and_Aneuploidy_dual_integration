@@ -656,8 +656,8 @@ def filter_duplicate_calls(sv_calls):
     print('\n--- Filtering duplicate SV calls ---')
     print(f'Input SV calls : {sv_calls.shape[0]}')
     sv_calls.reset_index(inplace=True,drop=True)
-    sv_calls['Case Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
-    sv_calls['Control Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
+    sv_calls['Case Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
+    sv_calls['Control Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
     sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Found in Control','Case Molecule Count'],ascending=[True,True,False,False])
     grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
     final_calls = []
