@@ -1,0 +1,8 @@
+Cell Type,Case Sample Name,Control Sample Name,Event Type,Case Start Chromosome,Case End Chromosome,Case Event Start,Case Event End,Case Event Size,Case Molecule Count,Control Molecule Count,Found in Control
+HCM,GM16736,HG002,deletion,6,6,21814479.000,21837075.000,8600.000,87.000,0.000,no
+HCM,GM16736,HG002,translocation_interchr,2,10,56528076.000,62166879.000,,13.000,0.000,no
+HCM,GM16736,HG002,translocation_interchr,2,10,56528076.000,62168640.000,,22.000,0.000,no
+HCM,GM16736,HG002,translocation_interchr,7,20,143712074.000,10032710.000,,75.000,90.000,yes
+HCM,GM16736,HG002,translocation_interchr,7,10,64820262.000,57454464.000,,181.000,171.000,yes
+HCM,GM16736,HG002,translocation_interchr,9,22,21976950.000,20318054.000,,78.000,0.000,no
+HCM,GM16736,HG002,translocation_interchr,9,22,21982907.000,20364964.000,,120.000,0.000,no
