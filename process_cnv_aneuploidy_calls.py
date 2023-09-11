@@ -600,6 +600,10 @@ def reorder_sheet(all_calls):
     all_calls['size_control'] = all_calls['size_control'].replace(-1,np.nan)
     cnv_calls = all_calls[all_calls['CallType']!='SV']
     cnv_calls_final = cnv_calls.reindex(reindex_final_cnv_cols,axis=1).rename(columns=name_cnv_map_dict)
+    cnv_calls_final = cnv_calls_final.rename(columns={'Case Chromosome':'Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
+    cnv_calls_final.columns = cnv_calls_final.columns.str.replace('Case', 'Treated')
+    cnv_calls_final.loc[cnv_calls_final['Event Size'] == 'Aneuplolidy','Event Size'] = np.nan # Replacing Aneuploidy event size with NA
+    print(all_calls.columns)
     sv_calls = all_calls[all_calls['CallType'] =='SV']
     sv_calls_final = sv_calls.reindex(reindex_final_sv_cols,axis=1).rename(columns=name_sv_map_dict)
 
@@ -641,10 +645,13 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
     include_cnv_calls = (joined_cnv_calls['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls['Case QC Passed'] == 'Fail').sum()
     joined_cnv_calls.index = ['Percent difference between observed and expected coefficient of variation (2 Mbp window)', 'Percent difference between observed and expected coefficient of variation (6 Mbp window)', 'Correlation with label density', 'Wave template correlation']
     joined_cnv_calls.index.name = 'Metric'
+    joined_cnv_calls['Case QC Passed'] = joined_cnv_calls['Case QC Passed'].replace('Pass','yes').replace('Fail','no')
+    joined_cnv_calls['Control QC Passed'] = joined_cnv_calls['Control QC Passed'].replace('Pass','yes').replace('Fail','no')
+    joined_cnv_calls.columns = joined_cnv_calls.columns.str.replace('Case', 'Treated')
     if include_cnv_calls == 0:
         print(f"\nCNV criteria passed for both Case and Control samples\n")
     else:
-        print(f"\nCNV criteria failed.\n\tCase contains [{(joined_cnv_calls['Case QC Passed'] == 'Fail').sum()}] failed metrics\n\tControl contains [{(joined_cnv_calls['Control QC Passed'] == 'Fail').sum()}] failed metrics")
+        print(f"\nCNV criteria failed.\n\tCase contains [{(joined_cnv_calls['Treated QC Passed'] == 'no').sum()}] failed metrics\n\tControl contains [{(joined_cnv_calls['Control QC Passed'] == 'no').sum()}] failed metrics")
     return joined_cnv_calls, include_cnv_calls
 
 
@@ -670,7 +677,10 @@ def filter_duplicate_calls(sv_calls):
     sv_final_calls = pd.concat(final_calls)
     print(f'Final SV calls : {sv_final_calls.shape[0]}')
     print(f'Filtered duplicate calls : {sv_calls.shape[0] - sv_final_calls.shape[0]}')
-    return sv_final_calls
+    sv_final_calls = sv_final_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
+    sv_final_calls.columns = sv_final_calls.columns.str.replace('Case', 'Treated')
+    duplicate_calls = sv_calls[~sv_calls.index.isin(sv_final_calls.index)]
+    return sv_final_calls, duplicate_calls
 
 def format_rounded(number, decimals=3):
     """Formats a number to a fixed number of decimals, retaining trailing zeros.
@@ -827,9 +837,8 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['ID_control'] = control_id
     all_calls['Cell type'] = celltype
     cnv_calls, sv_calls = reorder_sheet(all_calls)
-    sv_calls_filtered = filter_duplicate_calls(sv_calls)
+    sv_calls_filtered, duplicate_calls = filter_duplicate_calls(sv_calls)
     cnv_statistics, include_cnv_calls = process_case_and_control_json(control_json, case_json, control_id, case_id)
-
 
     with pd.ExcelWriter(out_file) as writer:
         file_handle = extract_path_from_handle(out_file)
@@ -837,8 +846,11 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
         print(f"Writing SV calls to csv file: {os.path.join(file_handle,'SV_calls.csv')}")
         write_dataframe_to_csv(df=sv_calls_filtered, filename=os.path.join(file_handle,'SV_calls.csv'))
+        print(f"Writing duplicate SV calls to csv file: {os.path.join(file_handle,'Duplicate_SV_calls.csv')}")
+        write_dataframe_to_csv(df=duplicate_calls, filename=os.path.join(file_handle,'SV_calls.csv'))
         print(f"Writing SV calls to docx file: {os.path.join(file_handle,'SV_calls.docx')}")
         generate_docx(sv_calls_filtered, os.path.join(file_handle,'SV_calls'))
+
         if include_cnv_calls == 0:
             print(f"Writing CNV calls to results excel file: {out_file}")
             cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
