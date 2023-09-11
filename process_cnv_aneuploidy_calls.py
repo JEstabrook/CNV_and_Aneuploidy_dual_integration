@@ -603,7 +603,6 @@ def reorder_sheet(all_calls):
     cnv_calls_final = cnv_calls_final.rename(columns={'Case Chromosome':'Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     cnv_calls_final.columns = cnv_calls_final.columns.str.replace('Case', 'Treated')
     cnv_calls_final.loc[cnv_calls_final['Event Size'] == 'Aneuplolidy','Event Size'] = np.nan # Replacing Aneuploidy event size with NA
-    print(all_calls.columns)
     sv_calls = all_calls[all_calls['CallType'] =='SV']
     sv_calls_final = sv_calls.reindex(reindex_final_sv_cols,axis=1).rename(columns=name_sv_map_dict)
 
@@ -680,6 +679,7 @@ def filter_duplicate_calls(sv_calls):
     sv_final_calls = sv_final_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     sv_final_calls.columns = sv_final_calls.columns.str.replace('Case', 'Treated')
     duplicate_calls = sv_calls[~sv_calls.index.isin(sv_final_calls.index)]
+
     return sv_final_calls, duplicate_calls
 
 def format_rounded(number, decimals=3):
@@ -846,11 +846,10 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         sv_calls_filtered.to_excel(writer, sheet_name='SV_calls',index=False,float_format="%.3f", na_rep='NA')
         print(f"Writing SV calls to csv file: {os.path.join(file_handle,'SV_calls.csv')}")
         write_dataframe_to_csv(df=sv_calls_filtered, filename=os.path.join(file_handle,'SV_calls.csv'))
-        print(f"Writing duplicate SV calls to csv file: {os.path.join(file_handle,'Duplicate_SV_calls.csv')}")
-        write_dataframe_to_csv(df=duplicate_calls, filename=os.path.join(file_handle,'SV_calls.csv'))
         print(f"Writing SV calls to docx file: {os.path.join(file_handle,'SV_calls.docx')}")
         generate_docx(sv_calls_filtered, os.path.join(file_handle,'SV_calls'))
-
+        print(f"Writing duplicate SV calls to csv file: {os.path.join(file_handle,'Duplicate_SV_calls.csv')}")
+        write_dataframe_to_csv(df=duplicate_calls, filename=os.path.join(file_handle,'Duplicate_SV_calls.csv'))
         if include_cnv_calls == 0:
             print(f"Writing CNV calls to results excel file: {out_file}")
             cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
