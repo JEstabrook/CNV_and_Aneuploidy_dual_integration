@@ -1,5 +1,5 @@
-Metric,Sample8,Case QC Passed,HG002,Control QC Passed
-Percent difference between observed and expected coefficient of variation (2 Mbp window),0.800,Pass,4.728,Pass
-Percent difference between observed and expected coefficient of variation (6 Mbp window),11.180,Pass,12.245,Pass
-Correlation with label density,0.029,Pass,0.070,Pass
-Wave template correlation,0.000,Pass,0.000,Pass
+Metric,Sample8,Treated QC Passed,HG002,Control QC Passed
+Percent difference between observed and expected coefficient of variation (2 Mbp window),0.800,yes,4.728,yes
+Percent difference between observed and expected coefficient of variation (6 Mbp window),11.180,yes,12.245,yes
+Correlation with label density,0.029,yes,0.070,yes
+Wave template correlation,0.000,yes,0.000,yes
