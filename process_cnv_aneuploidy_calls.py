@@ -679,6 +679,8 @@ def filter_duplicate_calls(sv_calls):
     sv_final_calls = sv_final_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     sv_final_calls.columns = sv_final_calls.columns.str.replace('Case', 'Treated')
     duplicate_calls = sv_calls[~sv_calls.index.isin(sv_final_calls.index)]
+    duplicate_calls = duplicate_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
+    duplicate_calls.columns = duplicate_calls.columns.str.replace('Case', 'Treated')
 
     return sv_final_calls, duplicate_calls
 
