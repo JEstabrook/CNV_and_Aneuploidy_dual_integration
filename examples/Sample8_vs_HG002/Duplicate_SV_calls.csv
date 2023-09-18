@@ -1,4 +1,4 @@
-Cell Type,Case Sample Name,Control Sample Name,Event Type,Case Start Chromosome,Case End Chromosome,Case Event Start,Case Event End,Case Event Size,Case Molecule Count,Control Molecule Count,Found in Control
+Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control
 HCM,Sample8,HG002,deletion,10,10,42555782.000,42578546.000,8678.000,6.000,2.000,no
 HCM,Sample8,HG002,deletion,11,11,36573020.000,36622460.000,38882.000,9.000,0.000,no
 HCM,Sample8,HG002,deletion,11,11,36591383.000,36622460.000,22069.000,5.000,0.000,no
