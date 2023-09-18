@@ -602,7 +602,7 @@ def reorder_sheet(all_calls):
     cnv_calls_final = cnv_calls.reindex(reindex_final_cnv_cols,axis=1).rename(columns=name_cnv_map_dict)
     cnv_calls_final = cnv_calls_final.rename(columns={'Case Chromosome':'Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     cnv_calls_final.columns = cnv_calls_final.columns.str.replace('Case', 'Treated')
-    cnv_calls_final.loc[cnv_calls_final['Event Size'] == 'Aneuploidy','Event Size'] = np.nan # Replacing Aneuploidy event size with NA
+    cnv_calls_final.loc[cnv_calls_final['Call Type'] == 'Aneuploidy','Event Size'] = np.nan # Replacing Aneuploidy event size with NA
     sv_calls = all_calls[all_calls['CallType'] =='SV']
     sv_calls_final = sv_calls.reindex(reindex_final_sv_cols,axis=1).rename(columns=name_sv_map_dict)
 
