@@ -1,7 +1,7 @@
 Cell Type,Treated Sample Name,Control Sample Name,Call Type,Event Type,Chromosome,Event Start,Event End,Event Size,Treated Fractional Copy Number,Control Fractional Copy Number,Found in Control
-HCM,Sample8,HG002,Aneuploidy,gain,5,,,180507680.000,2.695,,no
-HCM,Sample8,HG002,Aneuploidy,gain,10,,,128439889.000,2.376,,no
-HCM,Sample8,HG002,Aneuploidy,gain,21,,,37520123.000,2.347,,no
+HCM,Sample8,HG002,Aneuploidy,gain,5,,,,2.695,,no
+HCM,Sample8,HG002,Aneuploidy,gain,10,,,,2.376,,no
+HCM,Sample8,HG002,Aneuploidy,gain,21,,,,2.347,,no
 HCM,Sample8,HG002,CNV,gain,10,18514.000,39512270.000,39493756.000,2.406,,no
 HCM,Sample8,HG002,CNV,gain,10,42178604.000,46404297.000,4225693.000,2.389,,no
 HCM,Sample8,HG002,CNV,gain,10,47686678.000,98844380.000,51157702.000,2.383,,no
