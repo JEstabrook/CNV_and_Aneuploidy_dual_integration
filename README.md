@@ -25,7 +25,7 @@ bash Miniconda3-py39_4.12.0-Linux-x86_64.sh
 
 ```
 conda install -n base -c conda-forge mamba
-mamba create -c conda-forge -c bioconda -f envs/python_env.yaml
+mamba env create -f envs/python_env.yaml
 ```
 
 This will install dependencies into an isolated software environment, that has to be activated with
