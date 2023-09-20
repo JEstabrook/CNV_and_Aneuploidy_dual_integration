@@ -681,6 +681,7 @@ def filter_duplicate_calls(sv_calls):
     duplicate_calls = sv_calls[~sv_calls.index.isin(sv_final_calls.index)]
     duplicate_calls = duplicate_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     duplicate_calls.columns = duplicate_calls.columns.str.replace('Case', 'Treated')
+    duplicate_calls.loc[duplicate_calls['Event Type'] == 'translocation_intrachr','Event Size'] = np.nan # Replacing translocation_intrachr event size with NA
 
     return sv_final_calls, duplicate_calls
 
@@ -695,7 +696,7 @@ def format_rounded(number, decimals=3):
         str: The formatted string representation of the number.
     """
     if pd.isna(number) or np.isnan(number):  # Handle NaN values
-        return ''
+        return 'NA'
     return f"{round(number, decimals):.{decimals}f}"
 
 def write_dataframe_to_csv(df, filename, decimals=3):
@@ -841,7 +842,6 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     cnv_calls, sv_calls = reorder_sheet(all_calls)
     sv_calls_filtered, duplicate_calls = filter_duplicate_calls(sv_calls)
     cnv_statistics, include_cnv_calls = process_case_and_control_json(control_json, case_json, control_id, case_id)
-
     with pd.ExcelWriter(out_file) as writer:
         file_handle = extract_path_from_handle(out_file)
         print(f"\nWriting SV calls to results excel file: {out_file}")
