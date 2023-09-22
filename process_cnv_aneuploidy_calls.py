@@ -13,6 +13,7 @@ from datetime import datetime
 import warnings
 
 warnings.simplefilter(action='ignore', category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="docx")
 
 class PrintLogger:
     def __init__(self, log_file):
@@ -664,7 +665,7 @@ def filter_duplicate_calls(sv_calls):
     sv_calls.reset_index(inplace=True,drop=True)
     sv_calls['Case Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
     sv_calls['Control Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
-    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Found in Control','Case Molecule Count'],ascending=[True,True,False,False])
+    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Found in Control','Control Molecule Count'],ascending=[True,True,False,False])
     grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
     final_calls = []
     for (event_type, chrom),subset_frame in grouped_calls:
@@ -709,9 +710,15 @@ def write_dataframe_to_csv(df, filename, decimals=3):
         decimals (int, optional): The number of decimals to format to. Defaults to 3.
     """
     
-    # Transform numeric columns to strings with trailing zeros
+    # List of columns to be treated as integers
+    integer_columns = ['Event Start', 'Event End', 'Event Size', 
+                       'Treated Molecule Count', 'Control Molecule Count']
+    
     for col in df.select_dtypes(include=['float64', 'int64']).columns:
-        df[col] = df[col].apply(lambda x: format_rounded(x, decimals=decimals))
+        if col in integer_columns:
+            df[col] = df[col].astype(int).astype(str)
+        else:
+            df[col] = df[col].apply(lambda x: format_rounded(x, decimals=decimals))
     
     # Write to CSV
     df.to_csv(filename, index=False, na_rep='NA')
@@ -731,6 +738,10 @@ def generate_docx(frame, file_handle):
     font_name = "Times New Roman"
     center_alignment = docx.enum.text.WD_PARAGRAPH_ALIGNMENT.CENTER
 
+    # List of columns to be treated as integers
+    integer_columns = ['Event Start', 'Event End', 'Event Size', 
+                       'Treated Molecule Count', 'Control Molecule Count']
+
     # Add the column headings
     for j in range(frame.shape[1]):
         cell = t.cell(0, j)
@@ -739,22 +750,31 @@ def generate_docx(frame, file_handle):
         cell.paragraphs[0].alignment = center_alignment
         run.font.name = font_name
         run.font.size = Pt(12)
+    
     for i in range(frame.shape[0]):
         for j in range(frame.shape[1]):
             value = frame.iat[i, j]
-            # Format the value if it's a float
-            if isinstance(value, (float, int)):
+            col_name = frame.columns[j]
+            
+            # If the column belongs to integer columns list, format it as integer
+            if col_name in integer_columns and isinstance(value, (float, int)):
+                formatted_value = str(int(value))
+            # Otherwise, format the value if it's a float
+            elif isinstance(value, (float, int)):
                 formatted_value = format_rounded(value)
             else:
                 formatted_value = str(value)
+                
             cell = t.cell(i + 1, j)
             cell.text = formatted_value
             cell.paragraphs[0].alignment = center_alignment
             for run in cell.paragraphs[0].runs:
                 run.font.name = font_name
                 run.font.size = Pt(12)
+    
     doc.save('{}.docx'.format(file_handle))
 
+    
 def center_excel_cells(writer):
     """ Function to center values within a cell
 
