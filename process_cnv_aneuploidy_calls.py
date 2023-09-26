@@ -655,7 +655,7 @@ def filter_duplicate_calls(sv_calls):
     sv_calls.reset_index(inplace=True,drop=True)
     sv_calls['Case Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
     sv_calls['Control Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
-    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Found in Control','Control Molecule Count'],ascending=[True,True,False,False])
+    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Case Event Start','Found in Control','Control Molecule Count'],ascending=[False,False,False,False,False])
     grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
     final_calls = []
     for (event_type, chrom),subset_frame in grouped_calls:
@@ -704,11 +704,17 @@ def write_dataframe_to_csv(df, filename, decimals=3):
     integer_columns = ['Event Start', 'Event End', 'Event Size', 
                        'Treated Molecule Count', 'Control Molecule Count']
     
-    for col in df.select_dtypes(include=['float64', 'int64']).columns:
-        if col in integer_columns:
-            df[col] = df[col].astype(int).astype(str)
-        else:
-            df[col] = df[col].apply(lambda x: format_rounded(x, decimals=decimals))
+    for col in df.columns:
+        if pd.api.types.is_integer_dtype(df[col]) or pd.api.types.is_float_dtype(df[col]):
+            non_na_mask = df[col].notna()
+            
+            if col in integer_columns:
+                # Convert only non-NA values to standard integers
+                df.loc[non_na_mask, col] = df.loc[non_na_mask, col].astype('float').astype(int).astype(str)
+            else:
+                # Convert non-NA float values to formatted strings
+                df.loc[non_na_mask, col] = df.loc[non_na_mask, col].apply(lambda x: format_rounded(x, decimals=decimals))
+        # If it's not a float or integer column, keep it as it is.
     
     # Write to CSV
     df.to_csv(filename, index=False, na_rep='NA')
@@ -899,6 +905,7 @@ def main():
 
     # parse command line arguments
     args = parser.parse_args()
+    print(args)
     dual_aneuploidy = args.dual_aneuploidy
     dual_smap = args.dual_smap
     dual_cnv = args.dual_cnv
