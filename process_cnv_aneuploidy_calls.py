@@ -581,8 +581,8 @@ def reorder_sheet(all_calls):
         cnv_calls_final (pd.DataFrame): Reordered, final CNV calls
         sv_calls_final (pd.DataFrame): Reordered, final SV calls
     """
-    reindex_final_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'Found_in_control_sample_assembly', 'found_in_control_molecules', 'Found in control']
-    reindex_final_sv_cols = ['Cell type', 'ID_case', 'ID_control', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case','molecule_count_case', 'molecule_count_control','Found in control']
+    reindex_final_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case', 'VAF_case', 'start_control', 'end_control', 'size_control', 'VAF_control', 'fractional_copy_number_case', 'fractional_copy_number_control', 'molecule_count_case', 'molecule_count_control', 'Found_in_control_sample_assembly', 'found_in_control_molecules', 'Found in control','variant_id_case']
+    reindex_final_sv_cols = ['Cell type', 'ID_case', 'ID_control', 'Event Type', 'chrA_case', 'chrB_case', 'start_case', 'end_case', 'size_case','molecule_count_case', 'molecule_count_control','Found in control','variant_id_case']
     reindex_final_cnv_cols = ['Cell type', 'ID_case', 'ID_control', 'CallType', 'Event Type', 'chrA_case', 'start_case', 'end_case', 'size_case','fractional_copy_number_case','fractional_copy_number_control','Found in control']
     name_sv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name','ID_control':'Control Sample Name','Event Type':'Event Type', 'chrA_case':'Case Start Chromosome','chrB_case':'Case End Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','molecule_count_case':'Case Molecule Count','molecule_count_control':'Control Molecule Count', 'Found in control':'Found in Control'}
     name_cnv_map_dict = {'Cell type':'Cell Type', 'ID_case': 'Case Sample Name','ID_control':'Control Sample Name','CallType':'Call Type','Event Type':'Event Type','chrA_case':'Case Chromosome','start_case':'Case Event Start','end_case':'Case Event End','size_case':'Case Event Size','fractional_copy_number_case':'Case Fractional Copy Number','fractional_copy_number_control':'Control Fractional Copy Number', 'Found in control':'Found in Control'}
@@ -596,7 +596,6 @@ def reorder_sheet(all_calls):
     cnv_calls_final.loc[cnv_calls_final['Call Type'] == 'Aneuploidy','Event Size'] = np.nan # Replacing Aneuploidy event size with NA
     sv_calls = all_calls[all_calls['CallType'] =='SV']
     sv_calls_final = sv_calls.reindex(reindex_final_sv_cols,axis=1).rename(columns=name_sv_map_dict)
-
     return cnv_calls_final, sv_calls_final
 
 def process_json(input_json):
@@ -669,12 +668,16 @@ def filter_duplicate_calls(sv_calls):
     print(f'Filtered duplicate calls : {sv_calls.shape[0] - sv_final_calls.shape[0]}')
     sv_final_calls = sv_final_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
     sv_final_calls.columns = sv_final_calls.columns.str.replace('Case', 'Treated')
-    duplicate_calls = sv_calls[~sv_calls.index.isin(sv_final_calls.index)]
-    duplicate_calls = duplicate_calls.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
-    duplicate_calls.columns = duplicate_calls.columns.str.replace('Case', 'Treated')
-    duplicate_calls.loc[duplicate_calls['Event Type'] == 'translocation_intrachr','Event Size'] = np.nan # Replacing translocation_intrachr event size with NA
-
-    return sv_final_calls, duplicate_calls
+    
+    sv_calls_all = sv_calls.copy()
+    sv_calls_all['Final_SV_call'] = sv_calls_all['variant_id_case'].isin(sv_final_calls['variant_id_case']).replace(True,'yes').replace(False,'no')
+    sv_calls_all = sv_calls_all.drop(['variant_id_case'],axis=1)
+    sv_final_calls = sv_final_calls.drop(['variant_id_case'],axis=1)
+    sv_calls_all = sv_calls_all.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
+    sv_calls_all.columns = sv_calls_all.columns.str.replace('Case', 'Treated')
+    sv_calls_all.loc[sv_calls_all['Event Type'] == 'translocation_intrachr','Event Size'] = np.nan # Replacing translocation_intrachr event size with NA
+    
+    return sv_final_calls, sv_calls_all
 
 def format_rounded(number, decimals=3):
     """Formats a number to a fixed number of decimals, retaining trailing zeros.
@@ -856,7 +859,7 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
     all_calls['ID_control'] = control_id
     all_calls['Cell type'] = celltype
     cnv_calls, sv_calls = reorder_sheet(all_calls)
-    sv_calls_filtered, duplicate_calls = filter_duplicate_calls(sv_calls)
+    sv_calls_filtered, sv_calls_all = filter_duplicate_calls(sv_calls)
     cnv_statistics, include_cnv_calls = process_case_and_control_json(control_json, case_json, control_id, case_id)
     with pd.ExcelWriter(out_file) as writer:
         file_handle = extract_path_from_handle(out_file)
@@ -866,8 +869,8 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         write_dataframe_to_csv(df=sv_calls_filtered, filename=os.path.join(file_handle,'SV_calls.csv'))
         print(f"Writing SV calls to docx file: {os.path.join(file_handle,'SV_calls.docx')}")
         generate_docx(sv_calls_filtered, os.path.join(file_handle,'SV_calls'))
-        print(f"Writing duplicate SV calls to csv file: {os.path.join(file_handle,'Duplicate_SV_calls.csv')}")
-        write_dataframe_to_csv(df=duplicate_calls, filename=os.path.join(file_handle,'Duplicate_SV_calls.csv'))
+        print(f"Writing All SV calls to csv file: {os.path.join(file_handle,'All_SV_calls.csv')}")
+        write_dataframe_to_csv(df=sv_calls_all, filename=os.path.join(file_handle,'All_SV_calls.csv'))
         print(f"Writing CNV calls to results excel file: {out_file}")
         cnv_calls.to_excel(writer, sheet_name='CNV_and_Aneuploidy_calls',index=False,float_format="%.3f", na_rep='NA')
         print(f"Writing CNV calls to csv file: {os.path.join(file_handle, 'CNV_and_Aneuploidy_calls.csv')}")
@@ -905,7 +908,6 @@ def main():
 
     # parse command line arguments
     args = parser.parse_args()
-    print(args)
     dual_aneuploidy = args.dual_aneuploidy
     dual_smap = args.dual_smap
     dual_cnv = args.dual_cnv
