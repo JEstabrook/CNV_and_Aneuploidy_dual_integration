@@ -1,0 +1,16 @@
+Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control,Final_SV_call
+HCM,GM16736,HG002,deletion,4,4,137174039,137279172,96480,88,0,no,yes
+HCM,GM16736,HG002,deletion,6,6,21814479,21837075,8595,79,0,no,no
+HCM,GM16736,HG002,deletion,6,6,21814479,21837075,8600,87,0,no,yes
+HCM,GM16736,HG002,deletion,7,7,18905435,18944825,37054,12,0,no,yes
+HCM,GM16736,HG002,insertion,1,1,32697887,32727006,21603,98,0,no,yes
+HCM,GM16736,HG002,insertion,12,12,117928990,117940785,5762,203,90,yes,yes
+HCM,GM16736,HG002,insertion,16,16,84587488,84636140,114960,43,20,yes,yes
+HCM,GM16736,HG002,insertion,6,6,29947958,29950614,5894,44,0,no,yes
+HCM,GM16736,HG002,translocation_interchr,2,10,56528076,62166879,NA,13,0,no,no
+HCM,GM16736,HG002,translocation_interchr,2,10,56528076,62168640,NA,22,0,no,yes
+HCM,GM16736,HG002,translocation_interchr,7,20,143712074,10032710,NA,75,90,yes,yes
+HCM,GM16736,HG002,translocation_interchr,7,10,64820262,57454464,NA,181,171,yes,yes
+HCM,GM16736,HG002,translocation_interchr,9,22,21976950,20318054,NA,78,0,no,no
+HCM,GM16736,HG002,translocation_interchr,9,22,21982907,20364964,NA,120,0,no,yes
+HCM,GM16736,HG002,duplication_split,14,14,57465816,57672657,206841,117,0,no,yes
