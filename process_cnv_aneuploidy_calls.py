@@ -221,18 +221,6 @@ def calculate_overlap_percentage(xlist,ylist):
     return 2*overlap/length
 
 def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
-    """
-    Calculates the overlap percentage of two sets of values for every row relative to the first row.
-    If all rows overlap by more than a given threshold and the average delta of 'Case Event Size' ratios
-    is below size_threshold, return only the first row. Otherwise, return the first row and any rows 
-    that don't meet these criteria. If 'Case Event Size' is NaN, assume the sizes are equal.
-    Arguments:
-    df -- pandas DataFrame containing columns "Case Event Start", "Case Event End", and "Case Event Size"
-    threshold -- percentage threshold for filtering rows based on overlap (default 0.95)
-    size_threshold -- threshold for filtering rows based on 'Case Event Size' ratios (default 0.1)
-    Returns:
-    df_filtered -- Filtered DataFrame.
-    """
     df = df.sort_values(['Found in Control','Case Molecule Count'],ascending=[False,False])
     df.reset_index(inplace=True,drop=True)
     overlap_percentages = []
@@ -245,8 +233,7 @@ def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
         overlap = max(0, min(max1, max2) - max(min1, min2))
         length = (max1 - min1) + (max2 - min2)
         overlap_percentage = 2 * overlap / length if length != 0 else 0
-        # If 'Case Event Size' is NaN, assume the sizes are equal
-        if pd.isna(size1) or pd.isna(size2):
+        if pd.isna(size1) or pd.isna(size2):  # If 'Case Event Size' is NaN, assume the sizes are equal
             size_ratio = 0
         else:
             size_ratio = abs(size1/size2 - 1) + abs(size2/size1 - 1)
@@ -254,13 +241,16 @@ def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
         size_ratios.append(size_ratio)
     df['Overlap Percentage'] = overlap_percentages
     df['Size Ratio'] = size_ratios
-    # If all rows (except the first) overlap by more than the threshold and the average size ratio is less than size_threshold
-    # then return only the first row
-    if all(percentage > threshold for percentage in overlap_percentages[1:]) and np.mean(size_ratios[1:]) < size_threshold:
-        return df.iloc[[0]]
-    # Otherwise, return the first row and any rows that don't meet these criteria
-    else:
-        return df[(df.index == 0) | (df['Overlap Percentage'] <= threshold) | (df['Size Ratio'] >= size_threshold)]
+    
+    # Separate into two frames
+    df_pass = df[(df.index == 0) | (df['Overlap Percentage'] > threshold) & (df['Size Ratio'] < size_threshold)]
+    df_fail = df[~df.index.isin(df_pass.index)]
+    
+    result = df_pass.iloc[[0]]  # Taking the first row from df_pass
+    if not df_fail.empty:
+        result = pd.concat([result, calculate_overlap_percentage_by_row(df_fail, threshold, size_threshold)])
+    
+    return result
 
 def pairwise_comparison(case, control, cnv_overlap_percentage=0.5, cnv_window=1000):
     """Performs pairwise comparison between case and control DataFrames
