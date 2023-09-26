@@ -631,7 +631,7 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
     case_cnv.columns = [case_id, 'description', 'Case QC Passed']
     case_cnv[case_id] = case_cnv[case_id].astype(float)
     joined_cnv_calls = pd.concat([case_cnv.reindex([case_id,'Case QC Passed'],axis=1),control_cnv.reindex([control_id,'Control QC Passed'],axis=1)],axis=1)
-    include_cnv_calls = (joined_cnv_calls['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls['Case QC Passed'] == 'Fail').sum()
+    include_cnv_calls = (joined_cnv_calls.iloc[:2,]['Control QC Passed'] == 'Fail').sum() + (joined_cnv_calls.iloc[:2,]['Case QC Passed'] == 'Fail').sum()
     joined_cnv_calls.index = ['Percent difference between observed and expected coefficient of variation (2 Mbp window)', 'Percent difference between observed and expected coefficient of variation (6 Mbp window)', 'Correlation with label density', 'Wave template correlation']
     joined_cnv_calls.index.name = 'Metric'
     joined_cnv_calls['Case QC Passed'] = joined_cnv_calls['Case QC Passed'].replace('Pass','yes').replace('Fail','no')
@@ -640,7 +640,7 @@ def process_case_and_control_json(control_json, case_json, control_id, case_id):
     if include_cnv_calls == 0:
         print(f"\nCNV criteria passed for both Case and Control samples\n")
     else:
-        print(f"\nCNV criteria failed.\n\tCase contains [{(joined_cnv_calls['Treated QC Passed'] == 'no').sum()}] failed metrics\n\tControl contains [{(joined_cnv_calls['Control QC Passed'] == 'no').sum()}] failed metrics")
+        print(f"\nCNV criteria failed.\n\tCase contains [{(joined_cnv_calls.iloc[:2,]['Treated QC Passed'] == 'no').sum()}] failed metrics\n\tControl contains [{(joined_cnv_calls['Control QC Passed'].iloc[:2,] == 'no').sum()}] failed metrics")
     return joined_cnv_calls, include_cnv_calls
 
 
@@ -670,7 +670,7 @@ def filter_duplicate_calls(sv_calls):
     sv_final_calls.columns = sv_final_calls.columns.str.replace('Case', 'Treated')
     
     sv_calls_all = sv_calls.copy()
-    sv_calls_all['Final_SV_call'] = sv_calls_all['variant_id_case'].isin(sv_final_calls['variant_id_case']).replace(True,'yes').replace(False,'no')
+    sv_calls_all['Reported in Final Results'] = sv_calls_all['variant_id_case'].isin(sv_final_calls['variant_id_case']).replace(True,'yes').replace(False,'no')
     sv_calls_all = sv_calls_all.drop(['variant_id_case'],axis=1)
     sv_final_calls = sv_final_calls.drop(['variant_id_case'],axis=1)
     sv_calls_all = sv_calls_all.rename(columns={'Case Start Chromosome':'Start Chromosome','Case End Chromosome':'End Chromosome','Case Event Start':'Event Start','Case Event End':'Event End','Case Event Size':'Event Size'})
