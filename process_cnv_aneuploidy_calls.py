@@ -438,6 +438,42 @@ def convert_to_int(x):
     except (ValueError, TypeError):
         return None
 
+def safe_concat(dataframes):
+    """
+    Concatenates a list of DataFrames safely, ensuring columns with only NaN values 
+    do not trigger pandas FutureWarnings related to dtype determination.
+    
+    Parameters:
+    - dataframes (list): List of DataFrames to concatenate
+    
+    Returns:
+    - DataFrame: The concatenated DataFrame
+    """
+    
+    # Step 1: Identify common dtype for each column
+    all_columns = set().union(*[df.columns for df in dataframes])
+
+    column_dtypes = {}
+    for col in all_columns:
+        dtypes = [df[col].dtype for df in dataframes if col in df.columns]
+        
+        # Choose the first dtype as the common dtype for simplicity.
+        # This may need refinement based on specific data and requirements.
+        common_dtype = dtypes[0]
+        
+        column_dtypes[col] = common_dtype
+
+    # Step 2: Cast each column to its identified common dtype
+    for df in dataframes:
+        for col, dtype in column_dtypes.items():
+            if col in df.columns:
+                df[col] = df[col].astype(dtype)
+
+    # Perform the concatenation
+    result = pd.concat(dataframes, ignore_index=True, join='outer')
+    
+    return result
+
 def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed, control_smap_frame):
     """ Aggregates and formats all SV, CNV and Aneuploidy calls into dataframe
 
@@ -459,10 +495,13 @@ def process_all_calls(smap_subset, aneu_comp_table_indexed, cnv_comp_table_index
     smap_subset.reset_index(drop=True,inplace=True)
     aneu_comp_table_indexed.reset_index(drop=True,inplace=True)
     cnv_comp_table_indexed.reset_index(drop=True,inplace=True)
-    all_calls = pd.concat([smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed],ignore_index=True,join='outer')
+
+    dfs = [smap_subset, aneu_comp_table_indexed, cnv_comp_table_indexed]
+    all_calls = safe_concat(dfs)
+
     all_calls = all_calls.rename(columns=map_dict)
-    all_calls['VAF_case'] = all_calls['VAF_case'].astype(float)
-    all_calls['VAF_control'] = all_calls['VAF_control'].astype(float)
+    all_calls['VAF_case'] = all_calls['VAF_case'].astype('object')
+    all_calls['VAF_control'] = all_calls['VAF_control'].astype('object')
     all_calls['fractional_copy_number_case'] = all_calls['fractional_copy_number_case'].astype(float)
     all_calls['fractional_copy_number_control'] = all_calls['fractional_copy_number_control'].astype(float)
     all_calls['size_case'] = all_calls['size_case'].apply(convert_to_int).astype('Int64')
@@ -518,10 +557,14 @@ def associate_sv_with_controls(smap_subset, control_smap_frame):
     smap_subset['Start_Control'] = np.nan
     smap_subset['Stop_Control'] = np.nan
     smap_subset['VAF Control'] = np.nan
+    smap_subset['VAF Control'] = smap_subset['VAF Control'].astype('object')
+    smap_subset['SV size control'] = smap_subset['SV size control'].astype('object')
     smap_subset['Start'] = smap_subset['Start'].astype(float)
     smap_subset['Stop'] = smap_subset['Stop'].astype(float)
     control_smap_frame['RefStartPos'] = control_smap_frame['RefStartPos'].astype(float)
     control_smap_frame['RefEndPos'] = control_smap_frame['RefEndPos'].astype(float)
+    control_smap_frame['VAF'] = control_smap_frame['VAF'].astype('object')
+    control_smap_frame['SVsize'] = control_smap_frame['SVsize'].astype('object')
     smap_subset_updated = smap_subset.copy()
     print('\n--- Intersecting SV Case & Control calls ---\n')
     grouped_calls = smap_subset.groupby(['Event Type','ChrA location'])
@@ -710,7 +753,7 @@ def write_dataframe_to_csv(df, filename, decimals=3):
     for col in df.columns:
         if pd.api.types.is_integer_dtype(df[col]) or pd.api.types.is_float_dtype(df[col]):
             non_na_mask = df[col].notna()
-            
+            df[col] = df[col].astype('object')
             if col in integer_columns:
                 # Convert only non-NA values to standard integers
                 df.loc[non_na_mask, col] = df.loc[non_na_mask, col].astype('float').astype(int).astype(str)
