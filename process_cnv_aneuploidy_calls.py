@@ -13,6 +13,7 @@ from datetime import datetime
 import warnings
 
 warnings.simplefilter(action='ignore', category=DeprecationWarning)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="docx")
 
 class PrintLogger:
@@ -697,7 +698,7 @@ def filter_duplicate_calls(sv_calls):
     sv_calls.reset_index(inplace=True,drop=True)
     sv_calls['Case Molecule Count'] = sv_calls['Case Molecule Count'].astype('int64')
     sv_calls['Control Molecule Count'] = sv_calls['Control Molecule Count'].astype('int64')
-    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Case Event Start','Found in Control','Control Molecule Count'],ascending=[False,False,False,False,False])
+    sv_calls_sorted = sv_calls.sort_values(['Event Type','Case Start Chromosome','Case Event Start','Found in Control','Control Molecule Count', 'Case Molecule Count'],ascending=[False,False,False,False,False,False])
     grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
     final_calls = []
     for (event_type, chrom),subset_frame in grouped_calls:
