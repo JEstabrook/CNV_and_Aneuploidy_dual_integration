@@ -1,4 +1,4 @@
-Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control,Final_SV_call
+Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control,Reported in Final Results
 HCM,Sample8,HG002,deletion,1,1,89079223,89103658,13974,19,51,yes,yes
 HCM,Sample8,HG002,deletion,1,1,89079223,89103658,13984,6,25,yes,no
 HCM,Sample8,HG002,deletion,10,10,42555772,42578556,8635,18,19,yes,yes

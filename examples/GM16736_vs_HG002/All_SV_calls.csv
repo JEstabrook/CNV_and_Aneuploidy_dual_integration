@@ -1,4 +1,4 @@
-Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control,Final_SV_call
+Cell Type,Treated Sample Name,Control Sample Name,Event Type,Start Chromosome,End Chromosome,Event Start,Event End,Event Size,Treated Molecule Count,Control Molecule Count,Found in Control,Reported in Final Results
 HCM,GM16736,HG002,deletion,4,4,137174039,137279172,96480,88,0,no,yes
 HCM,GM16736,HG002,deletion,6,6,21814479,21837075,8595,79,0,no,no
 HCM,GM16736,HG002,deletion,6,6,21814479,21837075,8600,87,0,no,yes
