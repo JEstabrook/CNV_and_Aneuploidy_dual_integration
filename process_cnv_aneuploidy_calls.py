@@ -221,7 +221,7 @@ def calculate_overlap_percentage(xlist,ylist):
     return 2*overlap/length
 
 def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
-    df = df.sort_values(['Found in Control','Case Molecule Count'],ascending=[False,False])
+    df = df.sort_values(['Found in Control','Control Molecule Count'],ascending=[False,False])
     df.reset_index(inplace=True,drop=True)
     overlap_percentages = []
     size_ratios = []
