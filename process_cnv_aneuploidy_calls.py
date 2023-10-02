@@ -97,8 +97,9 @@ def read_aneuploidy(file_path):
         header = lines[start_index].strip()  # Store the header line
         data = lines[start_index + 1:]  # Skip only the header line
         df = pd.DataFrame([line.strip().split() for line in data],columns=header.split()).rename(columns={'#chr':'chr'}) # Set column names
-        print(f"Aneuploidy DataFrame shape : {df.shape[0]} rows x {df.shape[1]} columns\n")
-        return df
+        df_subset = df[df['score'].astype(float)>=.95] # Implementing filtering of Aneuploidy events using default/recommended confidence value (0.95)
+        print(f"Aneuploidy DataFrame shape : {df_subset.shape[0]} rows x {df_subset.shape[1]} columns\n")
+        return df_subset
     else:
         print('Unable to parse Aneuploidy file!\n')
         return None 
@@ -219,7 +220,7 @@ def calculate_overlap_percentage(xlist,ylist):
     max2 = max(ylist)
     overlap = max(0, min(max1, max2) - max(min1, min2))
     length = max1-min1 + max2-min2
-    return 2*overlap/length
+    return 2*overlap/length if length != 0 else 0
 
 def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
     df = df.sort_values(['Found in Control','Control Molecule Count'],ascending=[False,False])
