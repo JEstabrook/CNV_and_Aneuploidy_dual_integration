@@ -17,15 +17,46 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="docx")
 
 class PrintLogger:
+    """
+    A context manager class to redirect standard output to a log file.
+
+    This class can be used with the 'with' statement to temporarily redirect all print
+    statements within the block to a specified log file, while preserving the original
+    standard output outside of the block.
+
+    Attributes:
+    - log_file (str): Path to the log file where the print statements will be written.
+    - original_stdout (file-like object): Reference to the original standard output.
+
+    Example:
+        with PrintLogger('output.log') as pl:
+            print("This will be written to 'output.log'")
+        print("This will be printed to the original standard output")
+    """
     def __init__(self, log_file):
+        """
+        Initializes the PrintLogger with a log file.
+
+        Parameters:
+        - log_file (str): Path to the log file to which print outputs will be redirected.
+        """
         self.log_file = log_file
         self.original_stdout = sys.stdout
 
     def __enter__(self):
+        """
+        Called when entering the 'with' block. Redirects the standard output to the log file.
+
+        Returns:
+        - self: Returns an instance of itself.
+        """
         sys.stdout = open(self.log_file, 'a')
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Called when exiting the 'with' block. Restores the original standard output.
+        """
         sys.stdout.close()
         sys.stdout = self.original_stdout
 
@@ -208,9 +239,11 @@ def collapse_rows(df, cnv_stitch_window):
 def calculate_overlap_percentage(xlist,ylist):
     """
     Calculates the overlap percentage of two sets of values.
-    Arguments:
+
+    Parameters:
     xlist -- First set of values as a tuple (start1, end1).
     ylist -- Second set of values as a tuple (start2, end2).
+
     Returns:
     overlap_percentage -- The overlap percentage as a float.
     """
@@ -223,6 +256,27 @@ def calculate_overlap_percentage(xlist,ylist):
     return 2*overlap/length if length != 0 else 0
 
 def calculate_overlap_percentage_by_row(df, threshold=0.6, size_threshold=0.1):
+    """
+    Calculate overlap percentages and size ratios for genomic intervals in the given DataFrame.
+
+    The function first calculates overlap percentages and size ratios between the genomic intervals. 
+    Then, it separates the intervals into those that meet the specified thresholds and those that don't. 
+    For the intervals that failed to meet the threshold, the function recursively calculates the overlap.
+
+    Parameters:
+    - df (pandas.DataFrame): DataFrame containing genomic interval data. Expected columns are:
+        - `Case Event Start`
+        - `Case Event End`
+        - `Case Event Size`
+        - `Found in Control`
+        - `Control Molecule Count`
+    - threshold (float, optional): The minimum overlap percentage required for an interval to pass. Defaults to 0.6.
+    - size_threshold (float, optional): The maximum size ratio difference allowed for an interval to pass. Defaults to 0.1.
+
+    Returns:
+    - pandas.DataFrame: A DataFrame containing the intervals that passed the criteria and their overlap percentages and size ratios.
+    """
+
     df = df.sort_values(['Found in Control','Control Molecule Count'],ascending=[False,False])
     df.reset_index(inplace=True,drop=True)
     overlap_percentages = []
@@ -703,6 +757,8 @@ def filter_duplicate_calls(sv_calls):
     grouped_calls = sv_calls_sorted.groupby(['Event Type','Case Start Chromosome'])
     final_calls = []
     for (event_type, chrom),subset_frame in grouped_calls:
+        if event_type == 'inversion_partial':
+            continue
         if subset_frame.shape[0] == 1:
             final_calls.append(subset_frame)
         else:
@@ -932,6 +988,38 @@ def compare_calls(dual_aneuploidy, dual_smap, dual_cnv, control_aneuploidy, cont
         center_excel_cells(writer)
 
 def main():
+    """
+    Compare Aneuploidy and CNV calls for samples with corresponding dual variant annotation results.
+
+    This script compares Aneuploidy and CNV calls between a case and a control sample, 
+    both of which have corresponding dual variant annotation results. The script will generate 
+    a table that contains case-specific SVs, CNVs, and aneuploidy calls based on the provided input files.
+
+    Command-line arguments:
+        --dual_aneuploidy (str): Relative path to dual annotation *_Aneuploidy.txt file.
+        --dual_smap (str): Relative path to dual annotation *_Annotated_SV.smap file.
+        --dual_cnv (str): Relative path to dual annotation *_CNV.txt file.
+        --control_aneuploidy (str): Relative path to control *_Aneuploidy.txt file.
+        --control_cnv (str): Relative path to control *_CNV.txt file.
+        --control_smap (str): Relative path to control *_Annotated_SV.smap file.
+        --control_json (str): Relative path to control report.json containing CNV metrics.
+        --case_json (str): Relative path to case report.json containing CNV metrics.
+        --out_file (str): Output file handle where the comparison results will be saved.
+        --case_id (str): ID for the case sample.
+        --control_id (str): ID for the control sample.
+        --celltype (str): The cell type for the samples.
+        --cnv_overlap_percentage (float, default=0.3): Maximum reciprocal overlap ratio allowed for CNV calls 
+                                                       to be considered unique. Can be set between 0 and 1.
+        --aneuploidy_overlap_percentage (float, default=0.5): Maximum fractional difference allowed for 
+                                                              Aneuploidy calls to be considered unique. 
+                                                              Can be set between 0 and 1.
+        --cnv_window (int, default=1000): bp window buffer at the start and end of CNV calls.
+        --cnv_stitch_window (int, default=550000): bp window to merge neighboring CNV calls.
+
+    Example usage:
+        python process_cnv_aneuploidy_calls.py --dual_aneuploidy input_data/dual_results_Aneuploidy.txt --dual_smap input_data/dual_results_Annotated_SV.smap --dual_cnv input_data/dual_results_CNV.txt --control_aneuploidy input_data/control_Aneuploidy.txt --control_cnv input_data/control_CNV.txt --control_smap input_data/control_Annotated_SV.smap --out_file results/results.xlsx --case_id RNP --control_id Mock --celltype CEC-M29 --control_json input_data/Mock.json --case_json input_data/RNP.json
+
+    """
     parser = argparse.ArgumentParser(
         """This script compares Aneuploidy and CNV calls for samples with corresponding dual variant annotation results. This script will generate a table that contains case-specific SVs, CNVs and aneuploidy calls.""")
     parser.add_argument('--dual_aneuploidy', type=str, help="relative path to dual annotation *_Aneuploidy.txt")
