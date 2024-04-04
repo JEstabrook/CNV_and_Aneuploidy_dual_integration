@@ -36,7 +36,7 @@ $ snakemake --help
 ```
 
 ** Ensure that all filters are applied prior to downloading data **
-Download the filtered CNV and Aneuploidy calls for the control/mock sample from Access. Download the smap, CNV, and Aneuploidy results from the Dual annotation results from Access. Place both results in a folder and unzip. To run the script activate an environment that contains the packages above and from the directory where `process_cnv_aneuploidy_calls.py` is located run the script.
+Download the filtered smap, CNV and Aneuploidy calls for the control/mock sample from Access. Download the smap, CNV, and Aneuploidy results from the Dual annotation results from Access. For both the case and control sample assembly, select the informatics report and at the bottom of the report select "Download json". Place both results in a folder and unzip. To run the script activate an environment that contains the packages above and from the directory where `process_cnv_aneuploidy_calls.py` is located run the script.
 
 
 ## RUNNING
